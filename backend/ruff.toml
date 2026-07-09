@@ -1,0 +1,3 @@
+[lint]
+# Ignore E711 and E712 because SQLAlchemy overloads == for column comparisons.
+ignore = ["E711", "E712"]
