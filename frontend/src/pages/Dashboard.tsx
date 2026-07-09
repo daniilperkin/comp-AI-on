@@ -41,24 +41,32 @@ export default function Dashboard() {
       <QuickAddBar models={models} categories={categories} onCreated={load} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total entries"
-          value={stats?.total_entries ?? null}
-          hint={`${stats?.last_7_days ?? 0} in last 7 days`}
-        />
-        <StatCard
-          label="Avg quality"
-          value={stats?.avg_quality !== null && stats?.avg_quality !== undefined ? `${stats.avg_quality}/10` : null}
-        />
-        <StatCard
-          label="Success rate"
-          value={stats?.success_rate !== null && stats?.success_rate !== undefined ? `${Math.round(stats.success_rate * 100)}%` : null}
-        />
-        <StatCard label="Active models" value={models.filter((m) => m.is_active).length} />
+        <div className="animate-fade-in" style={{ animationDelay: "0ms" }}>
+          <StatCard
+            label="Total entries"
+            value={stats?.total_entries ?? null}
+            hint={`${stats?.last_7_days ?? 0} in last 7 days`}
+          />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: "80ms" }}>
+          <StatCard
+            label="Avg quality"
+            value={stats?.avg_quality !== null && stats?.avg_quality !== undefined ? `${stats.avg_quality}/10` : null}
+          />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: "160ms" }}>
+          <StatCard
+            label="Success rate"
+            value={stats?.success_rate !== null && stats?.success_rate !== undefined ? `${Math.round(stats.success_rate * 100)}%` : null}
+          />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: "240ms" }}>
+          <StatCard label="Active models" value={models.filter((m) => m.is_active).length} />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="animate-fade-in lg:col-span-2" style={{ animationDelay: "320ms" }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent entries</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/history")}>
@@ -75,7 +83,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-fade-in" style={{ animationDelay: "400ms" }}>
           <CardHeader>
             <CardTitle>Top models by quality</CardTitle>
           </CardHeader>

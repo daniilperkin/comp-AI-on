@@ -60,3 +60,32 @@ export interface OverviewStats {
     entries: number;
   }>;
 }
+
+export interface TimelinePoint {
+  date: string;
+  count: number;
+  avg_quality: number | null;
+}
+
+export interface LeaderboardEntry {
+  model: Model;
+  avg_quality: number | null;
+  entries: number;
+  success_rate: number | null;
+}
+
+export interface MatrixCell {
+  model_id: number;
+  model_name: string;
+  category_id: number;
+  category_name: string;
+  category_color: string | null;
+  avg_quality: number;
+  entries: number;
+}
+
+export interface MatrixData {
+  models: Model[];
+  categories: Category[];
+  cells: MatrixCell[];
+}

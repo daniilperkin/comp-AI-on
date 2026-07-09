@@ -3,6 +3,7 @@ import { LogTable } from "@/components/LogTable";
 import { useModelsCategories } from "@/components/QuickAddBar";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Plus, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import type { LogEntry } from "@/types";
 
@@ -38,7 +39,28 @@ export default function HistoryPage() {
           <h1 className="text-2xl font-bold">History</h1>
           <p className="text-sm text-muted-foreground">All log entries. Click any row to edit.</p>
         </div>
-        <Button onClick={() => (window.location.href = "/log")}>New entry</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => (window.location.href = "/log")} className="gap-1">
+            <Plus className="h-4 w-4" />
+            New entry
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = `/api/logs/export/csv${modelFilter || categoryFilter ? "?" + new URLSearchParams({ ...(modelFilter && { model_id: modelFilter }), ...(categoryFilter && { category_id: categoryFilter }) }).toString() : ""}`)}
+            className="gap-1"
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = `/api/logs/export/json${modelFilter || categoryFilter ? "?" + new URLSearchParams({ ...(modelFilter && { model_id: modelFilter }), ...(categoryFilter && { category_id: categoryFilter }) }).toString() : ""}`)}
+            className="gap-1"
+          >
+            <Download className="h-4 w-4" />
+            JSON
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">

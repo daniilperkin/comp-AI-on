@@ -1,16 +1,18 @@
 import { NavLink, Route, Routes } from "react-router-dom";
-import { LayoutDashboard, PlusCircle, History, Cpu, Settings } from "lucide-react";
+import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Dashboard from "@/pages/Dashboard";
 import Log from "@/pages/Log";
 import HistoryPage from "@/pages/History";
 import Models from "@/pages/Models";
 import SettingsPage from "@/pages/Settings";
+import AnalyticsPage from "@/pages/Analytics";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/log", label: "New Log", icon: PlusCircle },
   { to: "/history", label: "History", icon: History },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/models", label: "Models", icon: Cpu },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -18,7 +20,7 @@ const nav = [
 export default function App() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card/50">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card/50 animate-slide-in">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
           <span className="font-mono text-base font-bold text-primary">comp[AI]on</span>
         </div>
@@ -53,6 +55,7 @@ export default function App() {
           <Route path="/log" element={<Log />} />
           <Route path="/log/:id" element={<Log />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/models" element={<Models />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

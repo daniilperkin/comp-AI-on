@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, func, select
 
 from backend.db import get_session
@@ -49,4 +49,108 @@ def overview(session: Session = Depends(get_session)):
         "success_rate": round(solved / total, 2) if total > 0 else None,
         "last_7_days": last_7_days,
         "top_models": top_models,
+    }
+
+
+@router.get("/timeline")
+def timeline(
+    days: Optional[int] = Query(default=None, ge=1, le=3650),
+    session: Session = Depends(get_session),
+):
+    stmt = select(
+        func.date(LogEntry.created_at).label("date"),
+        func.count(LogEntry.id).label("count"),
+        func.avg(LogEntry.quality_score).label("avg_quality"),
+    ).group_by(func.date(LogEntry.created_at)).order_by(func.date(LogEntry.created_at))
+
+    if days is not None:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        stmt = stmt.where(LogEntry.created_at >= cutoff)
+
+    rows = session.exec(stmt).all()
+
+    return [
+        {
+            "date": row.date,
+            "count": row.count,
+            "avg_quality": round(row.avg_quality, 2) if row.avg_quality is not None else None,
+        }
+        for row in rows
+    ]
+
+
+@router.get("/leaderboard")
+def leaderboard(session: Session = Depends(get_session)):
+    rows = session.exec(
+        select(
+            LogEntry.model_id,
+            func.avg(LogEntry.quality_score).label("avg_quality"),
+            func.count(LogEntry.id).label("entries"),
+        )
+        .where(LogEntry.model_id.is_not(None))
+        .group_by(LogEntry.model_id)
+        .order_by(func.avg(LogEntry.quality_score).desc())
+    ).all()
+
+    result = []
+    for model_id, avg_q, entries in rows:
+        if model_id is None:
+            continue
+        m = session.get(Model, model_id)
+        if m:
+            solved = session.exec(
+                select(func.count(LogEntry.id)).where(
+                    LogEntry.model_id == model_id,
+                    LogEntry.outcome == Outcome.solved,
+                )
+            ).one()
+            result.append({
+                "model": m,
+                "avg_quality": round(avg_q, 2) if avg_q is not None else None,
+                "entries": entries,
+                "success_rate": round(solved / entries, 2) if entries > 0 else None,
+            })
+
+    return result
+
+
+@router.get("/matrix")
+def matrix(session: Session = Depends(get_session)):
+    rows = session.exec(
+        select(
+            LogEntry.model_id,
+            LogEntry.category_id,
+            func.avg(LogEntry.quality_score).label("avg_quality"),
+            func.count(LogEntry.id).label("entries"),
+        )
+        .where(
+            LogEntry.model_id.is_not(None),
+            LogEntry.category_id.is_not(None),
+            LogEntry.quality_score.is_not(None),
+        )
+        .group_by(LogEntry.model_id, LogEntry.category_id)
+    ).all()
+
+    cells = []
+    for model_id, category_id, avg_q, entries in rows:
+        m = session.get(Model, model_id)
+        c = session.get(Category, category_id)
+        if m and c:
+            cells.append({
+                "model_id": model_id,
+                "model_name": m.name,
+                "category_id": category_id,
+                "category_name": c.name,
+                "category_color": c.color,
+                "avg_quality": round(avg_q, 2),
+                "entries": entries,
+            })
+
+    models = session.exec(select(Model).where(Model.is_active == True).order_by(Model.name)).all()
+    categories = session.exec(select(Category).order_by(Category.name)).all()
+
+    return {
+        "models": models,
+        "categories": categories,
+        "cells": cells,
     }

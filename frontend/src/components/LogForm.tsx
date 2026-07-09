@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Trash2 } from "lucide-react";
+import { Save, Trash2, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
-import type { LogEntry, LogEntryInput, Model, Category, Outcome } from "@/types";
+import type { LogEntry, LogEntryInput, Model, Category, Outcome, ModelKind } from "@/types";
 
 interface LogFormProps {
   models: Model[];
   categories: Category[];
+  onModelCreated?: (model: Model) => void;
 }
 
 const empty: LogEntryInput = {
@@ -30,12 +31,14 @@ const empty: LogEntryInput = {
   notes: "",
 };
 
-export default function LogForm({ models, categories }: LogFormProps) {
+export default function LogForm({ models, categories, onModelCreated }: LogFormProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const editingId = id ? Number(id) : null;
 
   const [form, setForm] = useState<LogEntryInput>({ ...empty });
+  const [newModelKind, setNewModelKind] = useState<ModelKind>("web");
+  const [newModelVendor, setNewModelVendor] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -67,6 +70,12 @@ export default function LogForm({ models, categories }: LogFormProps) {
       .catch(() => setError("Entry not found"));
   }, [editingId]);
 
+  const isNewModel = useMemo(() => {
+    const typed = form.model_name_text?.trim().toLowerCase();
+    if (!typed || form.model_id) return false;
+    return !models.some((m) => m.name.toLowerCase() === typed);
+  }, [form.model_name_text, form.model_id, models]);
+
   function set<K extends keyof LogEntryInput>(key: K, value: LogEntryInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -81,14 +90,26 @@ export default function LogForm({ models, categories }: LogFormProps) {
       return;
     }
 
-    const payload: LogEntryInput = { ...form };
-    if (form.model_id === null) delete payload.model_id;
-    if (form.category_id === null) delete payload.category_id;
-    if (!form.quality_score) delete payload.quality_score;
-    if (!form.outcome) delete payload.outcome;
-
     setSaving(true);
     try {
+      let payload: LogEntryInput = { ...form };
+
+      if (isNewModel) {
+        const newModel = await api.post<Model>("/models", {
+          name: form.model_name_text!.trim(),
+          kind: newModelKind,
+          vendor: newModelVendor.trim() || null,
+          is_active: true,
+        });
+        onModelCreated?.(newModel);
+        payload = { ...payload, model_id: newModel.id, model_name_text: null };
+      }
+
+      if (payload.model_id === null) delete payload.model_id;
+      if (payload.category_id === null) delete payload.category_id;
+      if (!payload.quality_score) delete payload.quality_score;
+      if (!payload.outcome) delete payload.outcome;
+
       if (editingId) {
         await api.patch<LogEntry>(`/logs/${editingId}`, payload);
       } else {
@@ -127,7 +148,11 @@ export default function LogForm({ models, categories }: LogFormProps) {
               <Label>Model</Label>
               <Select
                 value={form.model_id?.toString() ?? ""}
-                onChange={(e) => set("model_id", e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  set("model_id", val);
+                  if (val) set("model_name_text", "");
+                }}
               >
                 <option value="">— free text below —</option>
                 {models.filter((m) => m.is_active).map((m) => (
@@ -135,17 +160,55 @@ export default function LogForm({ models, categories }: LogFormProps) {
                 ))}
               </Select>
               <Input
-                placeholder="Or type model name"
+                placeholder="Or type a model name"
                 value={form.model_name_text ?? ""}
-                onChange={(e) => set("model_name_text", e.target.value)}
+                onChange={(e) => {
+                  set("model_name_text", e.target.value);
+                  set("model_id", null);
+                }}
               />
+              {isNewModel && (
+                <div className="animate-fade-in rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium text-primary">
+                      New model — will be added to your Models list
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Kind</Label>
+                      <Select
+                        value={newModelKind}
+                        onChange={(e) => setNewModelKind(e.target.value as ModelKind)}
+                      >
+                        <option value="local">local</option>
+                        <option value="web">web</option>
+                        <option value="agentic">agentic</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Vendor</Label>
+                      <Input
+                        placeholder="e.g. Anthropic"
+                        value={newModelVendor}
+                        onChange={(e) => setNewModelVendor(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <Label>Category</Label>
               <Select
                 value={form.category_id?.toString() ?? ""}
-                onChange={(e) => set("category_id", e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  set("category_id", val);
+                  if (val) set("category_name_text", "");
+                }}
               >
                 <option value="">— free text below —</option>
                 {categories.map((c) => (
@@ -155,7 +218,10 @@ export default function LogForm({ models, categories }: LogFormProps) {
               <Input
                 placeholder="Or type category name"
                 value={form.category_name_text ?? ""}
-                onChange={(e) => set("category_name_text", e.target.value)}
+                onChange={(e) => {
+                  set("category_name_text", e.target.value);
+                  set("category_id", null);
+                }}
               />
             </div>
           </div>
