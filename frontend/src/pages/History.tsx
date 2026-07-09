@@ -36,7 +36,7 @@ export default function HistoryPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">History</h1>
+          <h1 className="text-2xl font-bold tracking-tight">History</h1>
           <p className="text-sm text-muted-foreground">All log entries. Click any row to edit.</p>
         </div>
         <div className="flex gap-2">

@@ -11,15 +11,24 @@ import type { TimelinePoint, LeaderboardEntry, MatrixData, MatrixCell } from "@/
 
 const CHART_HEIGHT = 280;
 
-const chartTooltipStyle = {
-  backgroundColor: "hsl(222 47% 14%)",
-  border: "1px solid hsl(217 33% 24%)",
-  borderRadius: "0.5rem",
-  color: "hsl(210 40% 98%)",
-  fontSize: "0.75rem",
-};
+function useChartTheme() {
+  const isDark = document.documentElement.classList.contains("dark");
+  return {
+    tooltip: {
+      backgroundColor: isDark ? "hsl(0 0% 10%)" : "hsl(0 0% 100%)",
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+      borderRadius: "0.625rem",
+      color: isDark ? "hsl(40 33% 96%)" : "hsl(0 0% 10%)",
+      fontSize: "0.75rem",
+    },
+    grid: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+    axis: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
+    area: isDark ? "hsl(199 89% 48%)" : "hsl(199 89% 38%)",
+  };
+}
 
 export default function AnalyticsPage() {
+  const chartTheme = useChartTheme();
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [matrix, setMatrix] = useState<MatrixData | null>(null);
@@ -57,7 +66,7 @@ export default function AnalyticsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">
             Which models win at which tasks.
           </p>
@@ -98,28 +107,28 @@ export default function AnalyticsPage() {
                 <AreaChart data={timeline} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                   <defs>
                     <linearGradient id="timelineGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(199 89% 48%)" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(199 89% 48%)" stopOpacity={0} />
+                      <stop offset="0%" stopColor={chartTheme.area} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={chartTheme.area} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 24%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
                   <XAxis
                     dataKey="date"
-                    stroke="hsl(215 20% 65%)"
+                    stroke={chartTheme.axis}
                     fontSize={11}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="hsl(215 20% 65%)"
+                    stroke={chartTheme.axis}
                     fontSize={11}
                     tickLine={false}
                     allowDecimals={false}
                   />
-                  <Tooltip contentStyle={chartTooltipStyle} />
+                  <Tooltip contentStyle={chartTheme.tooltip} />
                   <Area
                     type="monotone"
                     dataKey="count"
-                    stroke="hsl(199 89% 48%)"
+                    stroke={chartTheme.area}
                     strokeWidth={2}
                     fill="url(#timelineGradient)"
                     name="Entries"
@@ -147,23 +156,23 @@ export default function AnalyticsPage() {
                       layout="vertical"
                       margin={{ top: 5, right: 10, bottom: 5, left: 20 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 24%)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
                       <XAxis
                         type="number"
                         domain={[0, 10]}
-                        stroke="hsl(215 20% 65%)"
+                        stroke={chartTheme.axis}
                         fontSize={11}
                         tickLine={false}
                       />
                       <YAxis
                         type="category"
                         dataKey="model.name"
-                        stroke="hsl(215 20% 65%)"
+                        stroke={chartTheme.axis}
                         fontSize={11}
                         tickLine={false}
                         width={120}
                       />
-                      <Tooltip contentStyle={chartTooltipStyle} />
+                      <Tooltip contentStyle={chartTheme.tooltip} />
                       <Bar
                         dataKey="avg_quality"
                         name="Avg quality"

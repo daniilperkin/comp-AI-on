@@ -10,7 +10,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, hint, className }: StatCardProps) {
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden hover:-translate-y-1 hover:shadow-soft-lg active:scale-[0.98] cursor-default", className)}>
       <CardContent className="p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className="mt-1 text-2xl font-bold text-foreground">

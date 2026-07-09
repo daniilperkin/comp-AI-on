@@ -94,7 +94,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Notification and app preferences.</p>
       </div>
 
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                   >
                     <span
                       className={cn(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                        "absolute top-0.5 left-0 h-5 w-5 rounded-full bg-background shadow-sm transition-transform",
                         enabled ? "translate-x-5" : "translate-x-0.5"
                       )}
                     />
@@ -210,7 +210,7 @@ export default function SettingsPage() {
             <p
               className={cn(
                 "text-sm",
-                testResult === "sent" ? "text-emerald-400" : "text-destructive"
+                testResult === "sent" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
               )}
             >
               {testResult === "sent"

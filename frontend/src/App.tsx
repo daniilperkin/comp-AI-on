@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom";
-import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3 } from "lucide-react";
+import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
 import Dashboard from "@/pages/Dashboard";
 import Log from "@/pages/Log";
 import HistoryPage from "@/pages/History";
@@ -19,11 +20,13 @@ const nav = [
 ];
 
 export default function App() {
+  const { theme, toggle } = useTheme();
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card/50 animate-slide-in">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <span className="font-mono text-base font-bold text-primary">comp[AI]on</span>
+          <span className="text-base font-bold tracking-tight text-foreground">comp<span className="text-muted-foreground">[AI]</span>on</span>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {nav.map(({ to, label, icon: Icon }) => (
@@ -33,9 +36,9 @@ export default function App() {
               end={to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/10 text-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )
               }
@@ -45,8 +48,15 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-border p-3 text-xs text-muted-foreground">
-          v0.1.0 — local only
+        <div className="border-t border-border p-3">
+          <button
+            onClick={toggle}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <p className="mt-2 px-3 text-xs text-muted-foreground/60">v0.1.0 — local only</p>
         </div>
       </aside>
 
