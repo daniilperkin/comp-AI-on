@@ -21,7 +21,7 @@
 frontend/
 ├── index.html              # HTML entry, dark class on <html> and <body>
 ├── package.json
-├── vite.config.ts          # Vite config + /api proxy to localhost:8000
+├── vite.config.ts          # Vite config + /api proxy to localhost:8765
 ├── tsconfig.json           # Strict mode, @/ path alias
 ├── tsconfig.node.json      # Node TS config (composite: true)
 ├── tailwind.config.js      # Dark mode: class, content globs, theme extends
@@ -194,26 +194,26 @@ Always run `npm run build` to verify — it runs `tsc -b` before `vite build`.
 
 ## Vite Proxy
 
-In dev mode, Vite proxies `/api/*` to `http://localhost:8000`:
+In dev mode, Vite proxies `/api/*` to `http://localhost:8765`:
 ```ts
 // vite.config.ts
 server: {
   proxy: {
     "/api": {
-      target: "http://localhost:8000",
+      target: "http://localhost:8765",
       changeOrigin: true,
     },
   },
 }
 ```
 
-Frontend code uses relative paths (`/api/logs`) — never hardcode `localhost:8000`.
+Frontend code uses relative paths (`/api/logs`) — never hardcode `localhost:8765`.
 
 ## Build
 
 ```bash
 npm run build    # tsc -b && vite build
-npm run dev      # vite dev server (port 5173)
+npm run dev      # vite dev server (port 6769)
 npm run preview  # preview production build
 ```
 

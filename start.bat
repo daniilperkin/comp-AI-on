@@ -30,14 +30,14 @@ if not exist "frontend\node_modules" (
 )
 
 echo.
-echo [start] Launching backend (port 8000) and frontend (port 5173)...
+echo [start] Launching backend (port 8765) and frontend (port 6769)...
 echo [start] Close both windows to stop the app.
 echo.
 
-start "comp[AI]on - Backend" cmd /k "cd /d "%ROOT%" && "backend\.venv\Scripts\python.exe" -m uvicorn backend.main:app --reload --port 8000"
+start "comp[AI]on - Backend" cmd /k "cd /d "%ROOT%" && "backend\.venv\Scripts\python.exe" -m uvicorn backend.main:app --reload --port 8765"
 timeout /t 2 /nobreak >nul
 start "comp[AI]on - Frontend" cmd /k "cd /d "%ROOT%\frontend" && npm run dev"
 timeout /t 2 /nobreak >nul
-start http://localhost:5173
+start http://localhost:6769
 
 endlocal

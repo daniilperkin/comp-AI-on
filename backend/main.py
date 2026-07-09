@@ -23,7 +23,7 @@ app = FastAPI(title="comp[AI]on", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:6769"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

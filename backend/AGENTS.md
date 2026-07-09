@@ -125,7 +125,7 @@ Delete `backend/database.db` and restart. `init_db()` in `db.py` calls:
 ```powershell
 # Must set PYTHONPATH to repo root (absolute imports)
 set PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
-backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
+backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8765
 ```
 
 ## Dependencies
@@ -144,4 +144,4 @@ When `frontend/dist/` exists, `main.py` mounts it as static files and serves the
 
 ## CORS
 
-Only enabled for dev (`localhost:5173`). In production, same-origin — no CORS needed.
+Only enabled for dev (`localhost:6769`). In production, same-origin — no CORS needed.

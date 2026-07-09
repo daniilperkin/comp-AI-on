@@ -26,15 +26,15 @@ if (-not (Test-Path -LiteralPath "frontend\node_modules")) {
 }
 
 Write-Host ""
-Write-Host "[start] Launching backend (port 8000) and frontend (port 5173)..." -ForegroundColor Green
+Write-Host "[start] Launching backend (port 8765) and frontend (port 6769)..." -ForegroundColor Green
 Write-Host "[start] Close both windows to stop the app." -ForegroundColor Green
 Write-Host ""
 
-$backendCmd = "Set-Location -LiteralPath '$Root'; & '$Root\backend\.venv\Scripts\python.exe' -m uvicorn backend.main:app --reload --port 8000"
+$backendCmd = "Set-Location -LiteralPath '$Root'; & '$Root\backend\.venv\Scripts\python.exe' -m uvicorn backend.main:app --reload --port 8765"
 $frontendCmd = "Set-Location -LiteralPath '$Root\frontend'; npm run dev"
 
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd
 Start-Sleep -Seconds 2
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendCmd
 Start-Sleep -Seconds 2
-Start-Process "http://localhost:5173"
+Start-Process "http://localhost:6769"

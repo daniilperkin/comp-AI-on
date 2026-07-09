@@ -61,7 +61,7 @@ comp[AI]on/
 └── frontend/
     ├── AGENTS.md              # Frontend-specific agent guide
     ├── package.json
-    ├── vite.config.ts         # Dev proxy /api -> localhost:8000
+    ├── vite.config.ts         # Dev proxy /api -> localhost:8765
     ├── tsconfig.json          # TypeScript config (strict)
     ├── tsconfig.node.json     # Node-specific TS config (composite)
     ├── tailwind.config.js     # Tailwind theme + dark mode
@@ -118,19 +118,19 @@ npm install
 
 ### Running dev servers manually
 ```powershell
-# Terminal 1 — Backend (port 8000)
+# Terminal 1 — Backend (port 8765)
 cd C:\Users\danyo\Desktop\Uni\comp[AI]on
 set PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
-backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
+backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8765
 
-# Terminal 2 — Frontend (port 5173)
+# Terminal 2 — Frontend (port 6769)
 cd C:\Users\danyo\Desktop\Uni\comp[AI]on\frontend
 npm run dev
 ```
 
 ### URLs
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000/api
+- Frontend: http://localhost:6769
+- Backend API: http://localhost:8765/api
 - Vite proxies `/api` to the backend in dev mode (no CORS issues)
 
 ## 5. Key Commands
@@ -142,7 +142,7 @@ npm run dev
 | `npm run dev` | Start Vite dev server | `frontend/` |
 | `npm run build` | TypeScript check + Vite production build | `frontend/` |
 | `npm run preview` | Preview production build | `frontend/` |
-| `uvicorn backend.main:app --reload --port 8000` | Start backend dev server | Repo root (with PYTHONPATH set) |
+| `uvicorn backend.main:app --reload --port 8765` | Start backend dev server | Repo root (with PYTHONPATH set) |
 
 ### Critical: PYTHONPATH
 The backend uses absolute imports like `from backend.models import ...`. You MUST set:
@@ -331,10 +331,10 @@ When using `Start-Process -WorkingDirectory`, the brackets break it. Use `cmd /c
 The backend uses absolute imports (`from backend.models import ...`). When running uvicorn directly, you MUST set `PYTHONPATH` to the repo root. The launchers handle this; manual runs do not.
 
 ### Vite proxy
-In dev mode, Vite proxies `/api/*` to `http://localhost:8000`. The frontend code uses relative paths (`/api/logs`) — never hardcode `localhost:8000` in frontend code.
+In dev mode, Vite proxies `/api/*` to `http://localhost:8765`. The frontend code uses relative paths (`/api/logs`) — never hardcode `localhost:8765` in frontend code.
 
 ### No CORS in production
-In production, FastAPI serves the built frontend from `frontend/dist/` as static files. CORS is only needed in dev (and is configured in `main.py` for `localhost:5173`).
+In production, FastAPI serves the built frontend from `frontend/dist/` as static files. CORS is only needed in dev (and is configured in `main.py` for `localhost:6769`).
 
 ### Build artifacts
 `frontend/vite.config.js` and `frontend/vite.config.d.ts` are TypeScript build artifacts — they're gitignored. Don't commit them.

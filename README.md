@@ -24,8 +24,8 @@ or
 .\start.ps1
 ```
 
-- Backend: http://localhost:8000 (API at `/api`)
-- Frontend: http://localhost:5173 (proxies `/api` to the backend)
+- Backend: http://localhost:8765 (API at `/api`)
+- Frontend: http://localhost:6769 (proxies `/api` to the backend)
 
 ## Resetting the database
 
