@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from backend.db import get_session
 from backend.models import Setting
+from backend.scheduler import reschedule
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -23,5 +24,10 @@ def update_settings(payload: dict, session: Session = Depends(get_session)):
         else:
             session.add(Setting(key=key, value=str(value)))
     session.commit()
+
+    reminder_keys = {"reminder_enabled", "reminder_time"}
+    if reminder_keys & payload.keys():
+        reschedule()
+
     rows = session.exec(select(Setting)).all()
     return {row.key: row.value for row in rows}

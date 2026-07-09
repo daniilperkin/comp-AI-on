@@ -7,6 +7,7 @@ import HistoryPage from "@/pages/History";
 import Models from "@/pages/Models";
 import SettingsPage from "@/pages/Settings";
 import AnalyticsPage from "@/pages/Analytics";
+import { NotificationOverlay } from "@/components/NotificationOverlay";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -60,6 +61,8 @@ export default function App() {
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
+
+      <NotificationOverlay />
     </div>
   );
 }

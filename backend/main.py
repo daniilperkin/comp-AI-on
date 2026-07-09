@@ -7,16 +7,19 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.db import init_db
-from backend.routers import categories, logs, models, settings, stats
+from backend.routers import categories, logs, models, notifications, settings, stats
+from backend.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
-app = FastAPI(title="comp[AI]on", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="comp[AI]on", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +33,7 @@ app.include_router(models.router)
 app.include_router(categories.router)
 app.include_router(stats.router)
 app.include_router(settings.router)
+app.include_router(notifications.router)
 
 
 @app.get("/api/health")

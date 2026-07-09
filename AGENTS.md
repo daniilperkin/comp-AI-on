@@ -346,6 +346,11 @@ No test framework is set up yet. For now, verify changes by:
 2. Start backend and test API endpoints with `Invoke-WebRequest` (PowerShell)
 3. Use the frontend UI to test end-to-end flows
 
+**IMPORTANT: Do NOT delete `backend/database.db` during testing.** The user is actively using the app with real data. A full DB wipe destroys all log entries, custom models, and categories. To test without affecting real data, either:
+- Use a temporary copy: `Copy-Item backend\database.db backend\test.db` and point your test script at it
+- Add test entries via the API and delete them individually afterward (DELETE `/api/logs/{id}`)
+- Only wipe the DB if the user explicitly asks for a reset
+
 ## 13. Git Conventions
 
 - Branch: `main`

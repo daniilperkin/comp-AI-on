@@ -89,3 +89,12 @@ export interface MatrixData {
   categories: Category[];
   cells: MatrixCell[];
 }
+
+export interface AppNotification {
+  id: number;
+  created_at: string;
+  title: string;
+  body: string;
+  channel: string;
+  shown: boolean;
+}
