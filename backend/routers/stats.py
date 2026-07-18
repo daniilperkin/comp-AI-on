@@ -2,12 +2,29 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import case
 from sqlmodel import Session, func, select
 
 from backend.db import get_session
 from backend.models import Category, LogEntry, Model, Outcome
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
+
+
+def _load_models(session: Session, model_ids) -> dict[int, Model]:
+    ids = [mid for mid in model_ids if mid is not None]
+    if not ids:
+        return {}
+    rows = session.exec(select(Model).where(Model.id.in_(ids))).all()
+    return {m.id: m for m in rows}
+
+
+def _load_categories(session: Session, category_ids) -> dict[int, Category]:
+    ids = [cid for cid in category_ids if cid is not None]
+    if not ids:
+        return {}
+    rows = session.exec(select(Category).where(Category.id.in_(ids))).all()
+    return {c.id: c for c in rows}
 
 
 @router.get("/overview")
@@ -35,11 +52,12 @@ def overview(session: Session = Depends(get_session)):
         .limit(3)
     ).all()
 
+    model_map = _load_models(session, [r[0] for r in rows])
     top_models = []
     for model_id, avg_q, entries in rows:
         if model_id is None:
             continue
-        m = session.get(Model, model_id)
+        m = model_map.get(model_id)
         if m:
             top_models.append({"model": m, "avg_quality": round(avg_q, 2), "entries": entries})
 
@@ -86,24 +104,20 @@ def leaderboard(session: Session = Depends(get_session)):
             LogEntry.model_id,
             func.avg(LogEntry.quality_score).label("avg_quality"),
             func.count(LogEntry.id).label("entries"),
+            func.sum(case((LogEntry.outcome == Outcome.solved, 1), else_=0)).label("solved"),
         )
         .where(LogEntry.model_id.is_not(None))
         .group_by(LogEntry.model_id)
         .order_by(func.avg(LogEntry.quality_score).desc())
     ).all()
 
+    model_map = _load_models(session, [r[0] for r in rows])
     result = []
-    for model_id, avg_q, entries in rows:
+    for model_id, avg_q, entries, solved in rows:
         if model_id is None:
             continue
-        m = session.get(Model, model_id)
+        m = model_map.get(model_id)
         if m:
-            solved = session.exec(
-                select(func.count(LogEntry.id)).where(
-                    LogEntry.model_id == model_id,
-                    LogEntry.outcome == Outcome.solved,
-                )
-            ).one()
             result.append({
                 "model": m,
                 "avg_quality": round(avg_q, 2) if avg_q is not None else None,
@@ -131,10 +145,13 @@ def matrix(session: Session = Depends(get_session)):
         .group_by(LogEntry.model_id, LogEntry.category_id)
     ).all()
 
+    model_map = _load_models(session, [r[0] for r in rows])
+    category_map = _load_categories(session, [r[1] for r in rows])
+
     cells = []
     for model_id, category_id, avg_q, entries in rows:
-        m = session.get(Model, model_id)
-        c = session.get(Category, category_id)
+        m = model_map.get(model_id)
+        c = category_map.get(category_id)
         if m and c:
             cells.append({
                 "model_id": model_id,

@@ -20,9 +20,9 @@ class Outcome(str, Enum):
 # ---- Model ----
 
 class ModelBase(SQLModel):
-    name: str
+    name: str = Field(max_length=100)
     kind: ModelKind = Field(default=ModelKind.web)
-    vendor: Optional[str] = None
+    vendor: Optional[str] = Field(default=None, max_length=100)
     is_active: bool = Field(default=True)
 
 
@@ -30,7 +30,7 @@ class Model(ModelBase, table=True):
     __tablename__ = "models"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(index=True, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -48,15 +48,15 @@ class ModelUpdate(SQLModel):
 # ---- Category ----
 
 class CategoryBase(SQLModel):
-    name: str
-    color: Optional[str] = None
+    name: str = Field(max_length=100)
+    color: Optional[str] = Field(default=None, max_length=32)
 
 
 class Category(CategoryBase, table=True):
     __tablename__ = "categories"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(index=True, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -73,17 +73,17 @@ class CategoryUpdate(SQLModel):
 
 class LogEntryBase(SQLModel):
     model_id: Optional[int] = Field(default=None, foreign_key="models.id")
-    model_name_text: Optional[str] = None
+    model_name_text: Optional[str] = Field(default=None, max_length=200)
     category_id: Optional[int] = Field(default=None, foreign_key="categories.id")
-    category_name_text: Optional[str] = None
-    task_description: Optional[str] = None
+    category_name_text: Optional[str] = Field(default=None, max_length=100)
+    task_description: Optional[str] = Field(default=None, max_length=500)
     quality_score: Optional[int] = Field(default=None, ge=1, le=10)
     outcome: Optional[Outcome] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     cost_usd: Optional[float] = None
     latency_ms: Optional[int] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=4000)
 
 
 class LogEntry(LogEntryBase, table=True):
@@ -117,8 +117,8 @@ class LogEntryUpdate(SQLModel):
 class Setting(SQLModel, table=True):
     __tablename__ = "settings"
 
-    key: str = Field(primary_key=True)
-    value: str = Field(default="")
+    key: str = Field(primary_key=True, max_length=64)
+    value: str = Field(default="", max_length=500)
 
 
 # ---- Notification ----
@@ -128,7 +128,7 @@ class Notification(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
-    title: str
-    body: str
-    channel: str = Field(default="browser")
+    title: str = Field(max_length=200)
+    body: str = Field(max_length=1000)
+    channel: str = Field(default="browser", max_length=32)
     shown: bool = Field(default=False)

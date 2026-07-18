@@ -1,5 +1,7 @@
+import os
 import subprocess
 import sys
+from datetime import datetime
 
 from sqlmodel import Session, select
 
@@ -16,26 +18,33 @@ def is_channel_enabled(session: Session, channel: str) -> bool:
     return get_setting(session, key, "false").lower() == "true"
 
 
-def send_os_toast(title: str, body: str) -> bool:
-    ps_script = f"""
-try {{
-    if (-not (Get-Module -ListAvailable -Name BurntToast)) {{
-        Install-Module BurntToast -Force -Scope CurrentUser -ErrorAction Stop
-    }}
-    Import-Module BurntToast -ErrorAction Stop
-    New-BurntToastNotification -Text "{title}", "{body}"
-    Write-Output "OK"
-}} catch {{
-    Write-Output $_.Exception.Message
-}}
+_PS_TOAST_SCRIPT = """
+$ErrorActionPreference = 'Stop'
+if (-not (Get-Module -ListAvailable -Name BurntToast)) {
+    Write-Error 'BurntToast module not installed. Run: Install-Module BurntToast -Scope CurrentUser'
+    exit 1
+}
+Import-Module BurntToast -ErrorAction Stop
+New-BurntToastNotification -Text $env:COMPANION_NOTIF_TITLE, $env:COMPANION_NOTIF_BODY
+Write-Output 'OK'
 """
+
+
+def send_os_toast(title: str, body: str) -> bool:
+    env = os.environ.copy()
+    env["COMPANION_NOTIF_TITLE"] = title
+    env["COMPANION_NOTIF_BODY"] = body
     try:
         result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", ps_script],
+            ["powershell", "-NoProfile", "-Command", _PS_TOAST_SCRIPT],
             capture_output=True,
             text=True,
             timeout=30,
+            env=env,
         )
+        if "OK" not in result.stdout:
+            msg = (result.stderr or result.stdout or "").strip()
+            print(f"[notify] OS toast failed: {msg}", file=sys.stderr)
         return "OK" in result.stdout
     except Exception as e:
         print(f"[notify] OS toast failed: {e}", file=sys.stderr)
@@ -49,9 +58,7 @@ def send_browser_notification(session: Session, title: str, body: str):
 
 
 def dispatch_reminder(session: Session):
-    from datetime import datetime, timezone
-
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     existing = session.exec(
         select(Notification).where(
             Notification.channel == "browser",

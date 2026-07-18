@@ -1,40 +1,48 @@
 import csv
 import io
+import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlmodel import Session, func, select
 
 from backend.db import get_session
-from backend.models import LogEntry, LogEntryCreate, LogEntryUpdate, Model, Category
+from backend.models import Category, LogEntry, LogEntryCreate, LogEntryUpdate, Model
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 
+def _apply_filters(stmt, model_id: Optional[int], category_id: Optional[int]):
+    if model_id is not None:
+        stmt = stmt.where(LogEntry.model_id == model_id)
+    if category_id is not None:
+        stmt = stmt.where(LogEntry.category_id == category_id)
+    return stmt
+
+
 @router.get("")
 def list_logs(
+    response: Response,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     model_id: Optional[int] = None,
     category_id: Optional[int] = None,
     session: Session = Depends(get_session),
 ):
-    stmt = select(LogEntry).order_by(LogEntry.created_at.desc())
-    if model_id is not None:
-        stmt = stmt.where(LogEntry.model_id == model_id)
-    if category_id is not None:
-        stmt = stmt.where(LogEntry.category_id == category_id)
-    stmt = stmt.offset(offset).limit(limit)
-    return session.exec(stmt).all()
+    count_stmt = _apply_filters(select(func.count(LogEntry.id)), model_id, category_id)
+    total = session.exec(count_stmt).one()
 
+    stmt = _apply_filters(
+        select(LogEntry).order_by(LogEntry.created_at.desc()),
+        model_id,
+        category_id,
+    )
+    entries = session.exec(stmt.offset(offset).limit(limit)).all()
 
-@router.get("/{log_id}")
-def get_log(log_id: int, session: Session = Depends(get_session)):
-    entry = session.get(LogEntry, log_id)
-    if entry is None:
-        raise HTTPException(404, "Log entry not found")
-    return entry
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Limit"] = str(limit)
+    response.headers["X-Offset"] = str(offset)
+    return entries
 
 
 @router.post("", status_code=201)
@@ -53,28 +61,11 @@ def create_log(payload: LogEntryCreate, session: Session = Depends(get_session))
     return entry
 
 
-@router.patch("/{log_id}")
-def update_log(log_id: int, payload: LogEntryUpdate, session: Session = Depends(get_session)):
-    entry = session.get(LogEntry, log_id)
-    if entry is None:
-        raise HTTPException(404, "Log entry not found")
-    data = payload.model_dump(exclude_unset=True)
-    for k, v in data.items():
-        setattr(entry, k, v)
-    session.add(entry)
-    session.commit()
-    session.refresh(entry)
-    return entry
-
-
-@router.delete("/{log_id}", status_code=204)
-def delete_log(log_id: int, session: Session = Depends(get_session)):
-    entry = session.get(LogEntry, log_id)
-    if entry is None:
-        raise HTTPException(404, "Log entry not found")
-    session.delete(entry)
-    session.commit()
-    return None
+CSV_COLUMNS = [
+    "id", "created_at", "model", "category", "task_description",
+    "quality_score", "outcome", "input_tokens", "output_tokens",
+    "cost_usd", "latency_ms", "notes",
+]
 
 
 def _resolve_names(session: Session, entries: list[LogEntry]) -> list[dict]:
@@ -114,11 +105,14 @@ def _resolve_names(session: Session, entries: list[LogEntry]) -> list[dict]:
     return rows
 
 
-CSV_COLUMNS = [
-    "id", "created_at", "model", "category", "task_description",
-    "quality_score", "outcome", "input_tokens", "output_tokens",
-    "cost_usd", "latency_ms", "notes",
-]
+def _export_rows(session: Session, model_id: Optional[int], category_id: Optional[int]) -> list[dict]:
+    stmt = _apply_filters(
+        select(LogEntry).order_by(LogEntry.created_at.desc()),
+        model_id,
+        category_id,
+    )
+    entries = session.exec(stmt).all()
+    return _resolve_names(session, list(entries))
 
 
 @router.get("/export/csv")
@@ -127,13 +121,7 @@ def export_csv(
     category_id: Optional[int] = None,
     session: Session = Depends(get_session),
 ):
-    stmt = select(LogEntry).order_by(LogEntry.created_at.desc())
-    if model_id is not None:
-        stmt = stmt.where(LogEntry.model_id == model_id)
-    if category_id is not None:
-        stmt = stmt.where(LogEntry.category_id == category_id)
-    entries = session.exec(stmt).all()
-    rows = _resolve_names(session, list(entries))
+    rows = _export_rows(session, model_id, category_id)
 
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS)
@@ -153,18 +141,42 @@ def export_json(
     category_id: Optional[int] = None,
     session: Session = Depends(get_session),
 ):
-    import json
-
-    stmt = select(LogEntry).order_by(LogEntry.created_at.desc())
-    if model_id is not None:
-        stmt = stmt.where(LogEntry.model_id == model_id)
-    if category_id is not None:
-        stmt = stmt.where(LogEntry.category_id == category_id)
-    entries = session.exec(stmt).all()
-    rows = _resolve_names(session, list(entries))
+    rows = _export_rows(session, model_id, category_id)
 
     return Response(
         content=json.dumps(rows, indent=2, default=str),
         media_type="application/json",
         headers={"Content-Disposition": "attachment; filename=companion-logs.json"},
     )
+
+
+@router.get("/{log_id}")
+def get_log(log_id: int, session: Session = Depends(get_session)):
+    entry = session.get(LogEntry, log_id)
+    if entry is None:
+        raise HTTPException(404, "Log entry not found")
+    return entry
+
+
+@router.patch("/{log_id}")
+def update_log(log_id: int, payload: LogEntryUpdate, session: Session = Depends(get_session)):
+    entry = session.get(LogEntry, log_id)
+    if entry is None:
+        raise HTTPException(404, "Log entry not found")
+    data = payload.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(entry, k, v)
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    return entry
+
+
+@router.delete("/{log_id}", status_code=204)
+def delete_log(log_id: int, session: Session = Depends(get_session)):
+    entry = session.get(LogEntry, log_id)
+    if entry is None:
+        raise HTTPException(404, "Log entry not found")
+    session.delete(entry)
+    session.commit()
+    return None

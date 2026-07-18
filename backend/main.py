@@ -26,6 +26,7 @@ app.add_middleware(
     allow_origins=["http://localhost:6769"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count", "X-Limit", "X-Offset"],
 )
 
 app.include_router(logs.router)

@@ -5,8 +5,7 @@ backend/**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
-backend/database.db
-backend/database.db-journal
+backend/database.db*
 
 # Node
 frontend/node_modules/
