@@ -29,18 +29,42 @@ DEFAULT_SETTINGS = {
     "channel_browser_overlay": "true",
 }
 
+SEED_VERSION = "2"
 
-def run_seed(session: Session):
-    if session.exec(select(Model)).first() is None:
-        for name, kind, vendor in DEFAULT_MODELS:
+
+def _upsert_models(session: Session):
+    existing = {m.name: m for m in session.exec(select(Model)).all()}
+    for name, kind, vendor in DEFAULT_MODELS:
+        m = existing.get(name)
+        if m is None:
             session.add(Model(name=name, kind=kind, vendor=vendor))
 
-    if session.exec(select(Category)).first() is None:
-        for name, color in DEFAULT_CATEGORIES:
+
+def _upsert_categories(session: Session):
+    existing = {c.name: c for c in session.exec(select(Category)).all()}
+    for name, color in DEFAULT_CATEGORIES:
+        c = existing.get(name)
+        if c is None:
             session.add(Category(name=name, color=color))
 
-    if session.exec(select(Setting)).first() is None:
-        for k, v in DEFAULT_SETTINGS.items():
-            session.add(Setting(key=k, value=v))
+
+def _upsert_settings(session: Session):
+    for key, value in DEFAULT_SETTINGS.items():
+        existing = session.get(Setting, key)
+        if existing is None:
+            session.add(Setting(key=key, value=value))
+
+
+def run_seed(session: Session):
+    _upsert_models(session)
+    _upsert_categories(session)
+    _upsert_settings(session)
+
+    seed_version = session.get(Setting, "seed_version")
+    if seed_version is None:
+        session.add(Setting(key="seed_version", value=SEED_VERSION))
+    else:
+        seed_version.value = SEED_VERSION
+        session.add(seed_version)
 
     session.commit()
