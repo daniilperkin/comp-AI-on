@@ -2,17 +2,21 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
-import type { LogEntry, Model, Category } from "@/types";
+import { useCategories, useModels } from "@/lib/queries";
+import type { LogEntry } from "@/types";
 
 interface LogTableProps {
   entries: LogEntry[];
-  models: Model[];
-  categories: Category[];
   emptyHint?: string;
 }
 
-export function LogTable({ entries, models, categories, emptyHint }: LogTableProps) {
+export function LogTable({ entries, emptyHint }: LogTableProps) {
   const navigate = useNavigate();
+  const { data: modelsData } = useModels();
+  const { data: categoriesData } = useCategories();
+
+  const models = modelsData ?? [];
+  const categories = categoriesData ?? [];
 
   const modelMap = new Map(models.map((m) => [m.id, m.name]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));

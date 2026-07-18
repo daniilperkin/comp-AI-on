@@ -1,30 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
-import { api } from "@/lib/api";
-import type { LogEntry, LogEntryInput, Model, Category, Outcome } from "@/types";
+import { useCreateLog, useModelsCategories } from "@/lib/queries";
+import type { LogEntryInput, Outcome } from "@/types";
 
 interface QuickAddBarProps {
-  models: Model[];
-  categories: Category[];
-  onCreated?: (entry: LogEntry) => void;
+  onCreated?: () => void;
 }
 
-export function QuickAddBar({ models, categories, onCreated }: QuickAddBarProps) {
+export function QuickAddBar({ onCreated }: QuickAddBarProps) {
   const navigate = useNavigate();
+  const { models, categories } = useModelsCategories();
+  const createLog = useCreateLog();
   const [expanded, setExpanded] = useState(false);
   const [modelId, setModelId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [score, setScore] = useState("");
   const [outcome, setOutcome] = useState("");
   const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const activeModels = models.filter((m) => m.is_active);
+  const saving = createLog.isPending;
 
   async function handleSave() {
     setError("");
@@ -40,10 +40,9 @@ export function QuickAddBar({ models, categories, onCreated }: QuickAddBarProps)
     if (score) payload.quality_score = Number(score);
     if (outcome) payload.outcome = outcome as Outcome;
 
-    setSaving(true);
     try {
-      const entry = await api.post<LogEntry>("/logs", payload);
-      onCreated?.(entry);
+      await createLog.mutateAsync(payload);
+      onCreated?.();
       setModelId("");
       setCategoryId("");
       setScore("");
@@ -52,8 +51,6 @@ export function QuickAddBar({ models, categories, onCreated }: QuickAddBarProps)
       setExpanded(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -138,16 +135,4 @@ export function QuickAddBar({ models, categories, onCreated }: QuickAddBarProps)
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
     </div>
   );
-}
-
-export function useModelsCategories() {
-  const [models, setModels] = useState<Model[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    api.get<Model[]>("/models").then(setModels).catch(() => {});
-    api.get<Category[]>("/categories").then(setCategories).catch(() => {});
-  }, []);
-
-  return { models, categories, setModels, setCategories };
 }

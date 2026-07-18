@@ -1,41 +1,81 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Bell } from "lucide-react";
 import { api } from "@/lib/api";
+import { useDismissAllNotifications, useDismissNotification, usePendingNotifications } from "@/lib/queries";
 import type { AppNotification } from "@/types";
 
 const POLL_INTERVAL = 60_000;
 
 export function NotificationOverlay() {
+  const { data: notifs } = usePendingNotifications();
+  const dismissOne = useDismissNotification();
+  const dismissAll = useDismissAllNotifications();
   const [active, setActive] = useState<AppNotification[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function poll() {
     try {
-      const notifs = await api.get<AppNotification[]>("/notifications");
-      if (notifs.length > 0) {
-        setActive(notifs);
+      const fresh = await api.get<AppNotification[]>("/notifications");
+      if (fresh.length > 0) {
+        setActive((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const merged = [...prev, ...fresh.filter((n) => !existingIds.has(n.id))];
+          return merged;
+        });
       }
     } catch {
       // silent fail — notifications are non-critical
     }
   }
 
+  useEffect(() => {
+    poll();
+    timerRef.current = setInterval(poll, POLL_INTERVAL);
+
+    const onVisibility = () => {
+      if (document.hidden && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      } else if (!document.hidden && !timerRef.current) {
+        poll();
+        timerRef.current = setInterval(poll, POLL_INTERVAL);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (notifs && notifs.length > 0) {
+      setActive((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const merged = [...prev, ...notifs.filter((n) => !existingIds.has(n.id))];
+        return merged;
+      });
+    }
+  }, [notifs]);
+
   async function dismiss(id: number) {
     try {
-      await api.patch(`/notifications/${id}/shown`, {});
+      await dismissOne.mutateAsync(id);
     } catch {
       // ignore
     }
     setActive((prev) => prev.filter((n) => n.id !== id));
   }
 
-  useEffect(() => {
-    poll();
-    timerRef.current = setInterval(poll, POLL_INTERVAL);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+  async function dismissAllAndClear() {
+    try {
+      await dismissAll.mutateAsync();
+    } catch {
+      // ignore
+    }
+    setActive([]);
+  }
 
   if (active.length === 0) return null;
 
@@ -61,6 +101,14 @@ export function NotificationOverlay() {
           </button>
         </div>
       ))}
+      {active.length > 1 && (
+        <button
+          onClick={dismissAllAndClear}
+          className="self-end text-xs text-muted-foreground underline transition-colors hover:text-foreground"
+        >
+          Dismiss all
+        </button>
+      )}
     </div>
   );
 }

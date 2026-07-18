@@ -1,36 +1,33 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { LogTable } from "@/components/LogTable";
-import { useModelsCategories } from "@/components/QuickAddBar";
 import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Plus, Download } from "lucide-react";
-import { api } from "@/lib/api";
-import type { LogEntry } from "@/types";
+import { useCategories, useLogs, useModels } from "@/lib/queries";
 
 export default function HistoryPage() {
-  const { models, categories } = useModelsCategories();
-  const [entries, setEntries] = useState<LogEntry[]>([]);
+  const { data: modelsData } = useModels();
+  const { data: categoriesData } = useCategories();
   const [modelFilter, setModelFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("limit", "500");
-      if (modelFilter) params.set("model_id", modelFilter);
-      if (categoryFilter) params.set("category_id", categoryFilter);
-      const data = await api.get<LogEntry[]>(`/logs?${params}`);
-      setEntries(data);
-    } finally {
-      setLoading(false);
-    }
+  const models = modelsData ?? [];
+  const categories = categoriesData ?? [];
+
+  const modelId = modelFilter ? Number(modelFilter) : undefined;
+  const categoryId = categoryFilter ? Number(categoryFilter) : undefined;
+
+  const { data: entries, isLoading } = useLogs({ limit: 500, modelId, categoryId });
+
+  function exportUrl(format: "csv" | "json") {
+    const params = new URLSearchParams();
+    if (modelFilter) params.set("model_id", modelFilter);
+    if (categoryFilter) params.set("category_id", categoryFilter);
+    const qs = params.toString();
+    return `/api/logs/export/${format}${qs ? `?${qs}` : ""}`;
   }
-
-  useEffect(() => {
-    load();
-  }, [modelFilter, categoryFilter]);
 
   return (
     <div className="space-y-6 p-6">
@@ -40,26 +37,23 @@ export default function HistoryPage() {
           <p className="text-sm text-muted-foreground">All log entries. Click any row to edit.</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => (window.location.href = "/log")} className="gap-1">
-            <Plus className="h-4 w-4" />
-            New entry
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = `/api/logs/export/csv${modelFilter || categoryFilter ? "?" + new URLSearchParams({ ...(modelFilter && { model_id: modelFilter }), ...(categoryFilter && { category_id: categoryFilter }) }).toString() : ""}`)}
-            className="gap-1"
+          <Link to="/log" className={cn(buttonVariants({ variant: "default" }), "gap-1")}>
+            <Plus className="h-4 w-4" /> New entry
+          </Link>
+          <a
+            href={exportUrl("csv")}
+            download
+            className={cn(buttonVariants({ variant: "outline" }), "gap-1")}
           >
-            <Download className="h-4 w-4" />
-            CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = `/api/logs/export/json${modelFilter || categoryFilter ? "?" + new URLSearchParams({ ...(modelFilter && { model_id: modelFilter }), ...(categoryFilter && { category_id: categoryFilter }) }).toString() : ""}`)}
-            className="gap-1"
+            <Download className="h-4 w-4" /> CSV
+          </a>
+          <a
+            href={exportUrl("json")}
+            download
+            className={cn(buttonVariants({ variant: "outline" }), "gap-1")}
           >
-            <Download className="h-4 w-4" />
-            JSON
-          </Button>
+            <Download className="h-4 w-4" /> JSON
+          </a>
         </div>
       </div>
 
@@ -86,13 +80,11 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : (
         <LogTable
-          entries={entries}
-          models={models}
-          categories={categories}
+          entries={entries ?? []}
           emptyHint="No entries match these filters."
         />
       )}

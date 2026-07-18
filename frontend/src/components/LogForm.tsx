@@ -1,4 +1,3 @@
-import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,14 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Trash2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { LogEntry, LogEntryInput, Model, Category, Outcome, ModelKind } from "@/types";
-
-interface LogFormProps {
-  models: Model[];
-  categories: Category[];
-  onModelCreated?: (model: Model) => void;
-}
+import { useCreateLog, useCreateModel, useModelsCategories, useUpdateLog } from "@/lib/queries";
+import type { LogEntry, LogEntryInput, ModelKind, Outcome } from "@/types";
 
 const empty: LogEntryInput = {
   model_id: null,
@@ -31,10 +26,14 @@ const empty: LogEntryInput = {
   notes: "",
 };
 
-export default function LogForm({ models, categories, onModelCreated }: LogFormProps) {
+export default function LogForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const editingId = id ? Number(id) : null;
+  const { models, categories } = useModelsCategories();
+  const createLog = useCreateLog();
+  const updateLog = useUpdateLog();
+  const createModel = useCreateModel();
 
   const [form, setForm] = useState<LogEntryInput>({ ...empty });
   const [newModelKind, setNewModelKind] = useState<ModelKind>("web");
@@ -49,8 +48,10 @@ export default function LogForm({ models, categories, onModelCreated }: LogFormP
       setLoaded(true);
       return;
     }
+    let cancelled = false;
     api.get<LogEntry>(`/logs/${editingId}`)
       .then((e) => {
+        if (cancelled) return;
         setForm({
           model_id: e.model_id,
           model_name_text: e.model_name_text ?? "",
@@ -68,13 +69,16 @@ export default function LogForm({ models, categories, onModelCreated }: LogFormP
         setLoaded(true);
       })
       .catch(() => setError("Entry not found"));
+    return () => {
+      cancelled = true;
+    };
   }, [editingId]);
 
-  const isNewModel = useMemo(() => {
+  const isNewModel = (() => {
     const typed = form.model_name_text?.trim().toLowerCase();
     if (!typed || form.model_id) return false;
     return !models.some((m) => m.name.toLowerCase() === typed);
-  }, [form.model_name_text, form.model_id, models]);
+  })();
 
   function set<K extends keyof LogEntryInput>(key: K, value: LogEntryInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -95,13 +99,12 @@ export default function LogForm({ models, categories, onModelCreated }: LogFormP
       let payload: LogEntryInput = { ...form };
 
       if (isNewModel) {
-        const newModel = await api.post<Model>("/models", {
+        const newModel = await createModel.mutateAsync({
           name: form.model_name_text!.trim(),
           kind: newModelKind,
           vendor: newModelVendor.trim() || null,
           is_active: true,
         });
-        onModelCreated?.(newModel);
         payload = { ...payload, model_id: newModel.id, model_name_text: null };
       }
 
@@ -111,9 +114,9 @@ export default function LogForm({ models, categories, onModelCreated }: LogFormP
       if (!payload.outcome) delete payload.outcome;
 
       if (editingId) {
-        await api.patch<LogEntry>(`/logs/${editingId}`, payload);
+        await updateLog.mutateAsync({ id: editingId, input: payload });
       } else {
-        await api.post<LogEntry>("/logs", payload);
+        await createLog.mutateAsync(payload);
       }
       navigate("/history");
     } catch (e) {

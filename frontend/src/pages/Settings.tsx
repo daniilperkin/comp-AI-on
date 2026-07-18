@@ -4,14 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Bell, Save, Check, Monitor, Globe, Send } from "lucide-react";
-import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useSettings, useUpdateSettings } from "@/lib/queries";
+import { api } from "@/lib/api";
 
 interface ChannelConfig {
   key: string;
   label: string;
   icon: typeof Monitor;
   description: string;
+  testChannel: string;
 }
 
 const CHANNELS: ChannelConfig[] = [
@@ -20,57 +22,53 @@ const CHANNELS: ChannelConfig[] = [
     label: "OS toast",
     icon: Monitor,
     description: "Native Windows toast notification via BurntToast",
+    testChannel: "os_toast",
   },
   {
     key: "channel_browser_overlay",
     label: "In-browser overlay",
     icon: Globe,
     description: "Toast appears in the bottom-right of the app",
+    testChannel: "browser_overlay",
   },
 ];
 
 export default function SettingsPage() {
+  const { data: settings, isLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+
   const [reminderTime, setReminderTime] = useState("18:00");
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [channels, setChannels] = useState<Record<string, boolean>>({});
-  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .get<Record<string, string>>("/settings")
-      .then((s) => {
-        if (s.reminder_time) setReminderTime(s.reminder_time);
-        setReminderEnabled(s.reminder_enabled !== "false");
-        const ch: Record<string, boolean> = {};
-        for (const c of CHANNELS) {
-          ch[c.key] = s[c.key] !== "false";
-        }
-        setChannels(ch);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    if (!settings) return;
+    if (settings.reminder_time) setReminderTime(settings.reminder_time);
+    setReminderEnabled(settings.reminder_enabled !== "false");
+    const ch: Record<string, boolean> = {};
+    for (const c of CHANNELS) {
+      ch[c.key] = settings[c.key] !== "false";
+    }
+    setChannels(ch);
+  }, [settings]);
+
+  const saving = updateSettings.isPending;
 
   async function handleSave() {
-    setSaving(true);
     setSaved(false);
     setTestResult(null);
-    try {
-      await api.put("/settings", {
-        reminder_time: reminderTime,
-        reminder_enabled: reminderEnabled ? "true" : "false",
-        ...Object.fromEntries(
-          CHANNELS.map((c) => [c.key, channels[c.key] ? "true" : "false"])
-        ),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } finally {
-      setSaving(false);
-    }
+    await updateSettings.mutateAsync({
+      reminder_time: reminderTime,
+      reminder_enabled: reminderEnabled ? "true" : "false",
+      ...Object.fromEntries(
+        CHANNELS.map((c) => [c.key, channels[c.key] ? "true" : "false"])
+      ),
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
 
   async function handleTest(channel: string) {
@@ -98,7 +96,6 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground">Notification and app preferences.</p>
       </div>
 
-      {/* Daily reminder */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -118,7 +115,7 @@ export default function SettingsPage() {
               <Input
                 type="time"
                 value={reminderTime}
-                disabled={loading}
+                disabled={isLoading}
                 onChange={(e) => setReminderTime(e.target.value)}
               />
             </div>
@@ -133,7 +130,7 @@ export default function SettingsPage() {
               <span className="text-sm">Enabled</span>
             </label>
 
-            <Button onClick={handleSave} disabled={saving || loading} className="gap-1">
+            <Button onClick={handleSave} disabled={saving || isLoading} className="gap-1">
               {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
               {saving ? "Saving..." : saved ? "Saved" : "Save"}
             </Button>
@@ -141,7 +138,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Notification channels */}
       <Card>
         <CardHeader>
           <CardTitle>Notification channels</CardTitle>
@@ -195,7 +191,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="sm"
                     disabled={testing === ch.key}
-                    onClick={() => handleTest(ch.key === "channel_os_toast" ? "os_toast" : "browser_overlay")}
+                    onClick={() => handleTest(ch.testChannel)}
                     className="gap-1"
                   >
                     <Send className="h-3 w-3" />
@@ -225,7 +221,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Data */}
       <Card>
         <CardHeader>
           <CardTitle>Data</CardTitle>

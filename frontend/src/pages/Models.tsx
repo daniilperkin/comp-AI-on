@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,23 +6,40 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
-import { api } from "@/lib/api";
+import { useCreateModel, useDeleteModel, useModels, useUpdateModel } from "@/lib/queries";
 import type { Model, ModelKind } from "@/types";
 
 export default function Models() {
-  const [models, setModels] = useState<Model[]>([]);
+  const { data: modelsData } = useModels();
+  const createModel = useCreateModel();
+  const updateModel = useUpdateModel();
+  const deleteModel = useDeleteModel();
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Model>>({});
   const [creating, setCreating] = useState(false);
 
-  async function load() {
-    const data = await api.get<Model[]>("/models");
-    setModels(data);
+  const models = modelsData ?? [];
+
+  async function save() {
+    if (!draft.name?.trim()) return;
+    const payload = {
+      name: draft.name,
+      kind: (draft.kind ?? "web") as ModelKind,
+      vendor: draft.vendor ?? "",
+      is_active: draft.is_active ?? true,
+    };
+    if (editing) {
+      await updateModel.mutateAsync({ id: editing, input: payload });
+    } else {
+      await createModel.mutateAsync(payload);
+    }
+    cancel();
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  async function remove(id: number) {
+    if (!confirm("Delete this model?")) return;
+    await deleteModel.mutateAsync(id);
+  }
 
   function startCreate() {
     setDraft({ name: "", kind: "web", vendor: "", is_active: true });
@@ -40,29 +57,6 @@ export default function Models() {
     setEditing(null);
     setCreating(false);
     setDraft({});
-  }
-
-  async function save() {
-    if (!draft.name?.trim()) return;
-    const payload = {
-      name: draft.name,
-      kind: draft.kind ?? "web",
-      vendor: draft.vendor ?? "",
-      is_active: draft.is_active ?? true,
-    };
-    if (editing) {
-      await api.patch<Model>(`/models/${editing}`, payload);
-    } else {
-      await api.post<Model>("/models", payload);
-    }
-    cancel();
-    load();
-  }
-
-  async function remove(id: number) {
-    if (!confirm("Delete this model?")) return;
-    await api.delete(`/models/${id}`);
-    load();
   }
 
   return (

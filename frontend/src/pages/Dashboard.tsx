@@ -1,35 +1,19 @@
-import { useEffect, useState } from "react";
 import { StatCard } from "@/components/StatCard";
-import { QuickAddBar, useModelsCategories } from "@/components/QuickAddBar";
+import { QuickAddBar } from "@/components/QuickAddBar";
 import { LogTable } from "@/components/LogTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import type { OverviewStats, LogEntry } from "@/types";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { useModels, useStatsOverview, useLogs } from "@/lib/queries";
 
 export default function Dashboard() {
-  const { models, categories } = useModelsCategories();
-  const [stats, setStats] = useState<OverviewStats | null>(null);
-  const [recent, setRecent] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: statsLoading } = useStatsOverview();
+  const { data: recent } = useLogs({ limit: 10 });
+  const { data: models } = useModels();
 
-  async function load() {
-    setLoading(true);
-    try {
-      const [s, r] = await Promise.all([
-        api.get<OverviewStats>("/stats/overview"),
-        api.get<LogEntry[]>("/logs?limit=10"),
-      ]);
-      setStats(s);
-      setRecent(r);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
+  const recentEntries = recent ?? [];
+  const activeModels = models ?? [];
 
   return (
     <div className="space-y-6 p-6">
@@ -38,7 +22,7 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">Track which AI models excel at what.</p>
       </div>
 
-      <QuickAddBar models={models} categories={categories} onCreated={load} />
+      <QuickAddBar />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="animate-fade-in" style={{ animationDelay: "0ms" }}>
@@ -61,7 +45,7 @@ export default function Dashboard() {
           />
         </div>
         <div className="animate-fade-in" style={{ animationDelay: "240ms" }}>
-          <StatCard label="Active models" value={models.filter((m) => m.is_active).length} />
+          <StatCard label="Active models" value={activeModels.filter((m) => m.is_active).length} />
         </div>
       </div>
 
@@ -69,15 +53,16 @@ export default function Dashboard() {
         <Card className="animate-fade-in lg:col-span-2" style={{ animationDelay: "320ms" }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent entries</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/history")}>
+            <Link
+              to="/history"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+            >
               View all
-            </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <LogTable
-              entries={recent}
-              models={models}
-              categories={categories}
+              entries={recentEntries}
               emptyHint="No entries yet — add your first log using the bar above."
             />
           </CardContent>
@@ -88,7 +73,7 @@ export default function Dashboard() {
             <CardTitle>Top models by quality</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {statsLoading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
             ) : stats?.top_models.length ? (
               <ul className="space-y-3">

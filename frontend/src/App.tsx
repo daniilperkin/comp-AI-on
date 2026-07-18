@@ -1,14 +1,18 @@
+import { lazy, Suspense } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
-import Dashboard from "@/pages/Dashboard";
-import Log from "@/pages/Log";
-import HistoryPage from "@/pages/History";
-import Models from "@/pages/Models";
-import SettingsPage from "@/pages/Settings";
-import AnalyticsPage from "@/pages/Analytics";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationOverlay } from "@/components/NotificationOverlay";
+
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Log = lazy(() => import("@/pages/Log"));
+const HistoryPage = lazy(() => import("@/pages/History"));
+const AnalyticsPage = lazy(() => import("@/pages/Analytics"));
+const Models = lazy(() => import("@/pages/Models"));
+const SettingsPage = lazy(() => import("@/pages/Settings"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -18,6 +22,14 @@ const nav = [
   { to: "/models", label: "Models", icon: Cpu },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
+
+function PageFallback() {
+  return (
+    <div className="flex h-full items-center justify-center p-6">
+      <p className="text-muted-foreground">Loading…</p>
+    </div>
+  );
+}
 
 export default function App() {
   const { theme, toggle } = useTheme();
@@ -61,15 +73,20 @@ export default function App() {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/log" element={<Log />} />
-          <Route path="/log/:id" element={<Log />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/models" element={<Models />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/log" element={<Log />} />
+              <Route path="/log/:id" element={<Log />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/models" element={<Models />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <NotificationOverlay />

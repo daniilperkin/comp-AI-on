@@ -1,56 +1,48 @@
-import { useEffect, useState } from "react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Download, TrendingUp, Trophy, Grid3x3 } from "lucide-react";
-import { api } from "@/lib/api";
-import type { TimelinePoint, LeaderboardEntry, MatrixData, MatrixCell } from "@/types";
+import {
+  useStatsLeaderboard,
+  useStatsMatrix,
+  useStatsTimeline,
+} from "@/lib/queries";
+import { useTheme } from "@/lib/theme";
+import { useMemo } from "react";
+import type { MatrixData, MatrixCell } from "@/types";
 
 const CHART_HEIGHT = 280;
 
 function useChartTheme() {
-  const isDark = document.documentElement.classList.contains("dark");
-  return {
-    tooltip: {
-      backgroundColor: isDark ? "hsl(0 0% 10%)" : "hsl(0 0% 100%)",
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-      borderRadius: "0.625rem",
-      color: isDark ? "hsl(40 33% 96%)" : "hsl(0 0% 10%)",
-      fontSize: "0.75rem",
-    },
-    grid: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-    axis: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
-    area: isDark ? "hsl(199 89% 48%)" : "hsl(199 89% 38%)",
-  };
+  const { theme } = useTheme();
+  return useMemo(() => {
+    const isDark = theme === "dark";
+    return {
+      tooltip: {
+        backgroundColor: isDark ? "hsl(0 0% 10%)" : "hsl(0 0% 100%)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        borderRadius: "0.625rem",
+        color: isDark ? "hsl(40 33% 96%)" : "hsl(0 0% 10%)",
+        fontSize: "0.75rem",
+      },
+      grid: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+      axis: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
+      area: isDark ? "hsl(199 89% 48%)" : "hsl(199 89% 38%)",
+    };
+  }, [theme]);
 }
 
 export default function AnalyticsPage() {
   const chartTheme = useChartTheme();
-  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [matrix, setMatrix] = useState<MatrixData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: timeline } = useStatsTimeline();
+  const { data: leaderboard } = useStatsLeaderboard();
+  const { data: matrix } = useStatsMatrix();
 
-  useEffect(() => {
-    Promise.all([
-      api.get<TimelinePoint[]>("/stats/timeline"),
-      api.get<LeaderboardEntry[]>("/stats/leaderboard"),
-      api.get<MatrixData>("/stats/matrix"),
-    ])
-      .then(([t, l, m]) => {
-        setTimeline(t);
-        setLeaderboard(l);
-        setMatrix(m);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  function exportData(format: "csv" | "json") {
-    window.location.href = `/api/logs/export/${format}`;
-  }
+  const loading = !timeline || !leaderboard || !matrix;
 
   if (loading) {
     return (
@@ -60,7 +52,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const hasData = timeline.length > 0 || leaderboard.length > 0;
+  const hasData = (timeline?.length ?? 0) > 0 || (leaderboard?.length ?? 0) > 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -72,14 +64,20 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => exportData("csv")} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => exportData("json")} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            JSON
-          </Button>
+          <a
+            href={`/api/logs/export/csv`}
+            download
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+          >
+            <Download className="h-3.5 w-3.5" /> CSV
+          </a>
+          <a
+            href={`/api/logs/export/json`}
+            download
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+          >
+            <Download className="h-3.5 w-3.5" /> JSON
+          </a>
         </div>
       </div>
 
@@ -94,7 +92,6 @@ export default function AnalyticsPage() {
         </Card>
       ) : (
         <>
-          {/* Timeline */}
           <Card className="animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -140,7 +137,6 @@ export default function AnalyticsPage() {
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Leaderboard */}
             <Card className="animate-fade-in" style={{ animationDelay: "100ms" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -149,7 +145,7 @@ export default function AnalyticsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {leaderboard.length > 0 ? (
+                {leaderboard && leaderboard.length > 0 ? (
                   <ResponsiveContainer width="100%" height={Math.max(CHART_HEIGHT, leaderboard.length * 40)}>
                     <BarChart
                       data={leaderboard}
@@ -193,7 +189,6 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            {/* Model-vs-category matrix */}
             <Card className="animate-fade-in" style={{ animationDelay: "200ms" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

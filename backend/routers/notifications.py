@@ -32,6 +32,21 @@ def mark_shown(notif_id: int, session: Session = Depends(get_session)):
     return n
 
 
+@router.post("/mark-all-shown", status_code=200)
+def mark_all_shown(session: Session = Depends(get_session)):
+    pending = session.exec(
+        select(Notification).where(Notification.shown == False)
+    ).all()
+    count = 0
+    for n in pending:
+        n.shown = True
+        session.add(n)
+        count += 1
+    if count > 0:
+        session.commit()
+    return {"marked": count}
+
+
 class TestRequest(BaseModel):
     channel: str
 
