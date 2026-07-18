@@ -1,0 +1,114 @@
+"""Tests for log entry CRUD, validation, and export endpoints."""
+
+
+def test_create_log_requires_content(client):
+    resp = client.post("/api/logs", json={})
+    assert resp.status_code == 400
+    assert "at least" in resp.json()["detail"].lower()
+
+
+def test_create_log_with_model_only(client):
+    model = client.post("/api/models", json={"name": "TestModel", "kind": "web"}).json()
+    resp = client.post("/api/logs", json={"model_id": model["id"]})
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["model_id"] == model["id"]
+    assert data["id"] is not None
+
+
+def test_create_log_with_description_only(client):
+    resp = client.post("/api/logs", json={"task_description": "Testing the model"})
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["task_description"] == "Testing the model"
+    assert data["model_id"] is None
+
+
+def test_list_logs_pagination_header(client):
+    model = client.post("/api/models", json={"name": "PagModel", "kind": "web"}).json()
+    for _ in range(3):
+        client.post("/api/logs", json={"model_id": model["id"]})
+
+    resp = client.get("/api/logs?limit=2")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+    assert resp.headers["x-total-count"] == "3"
+    assert resp.headers["x-limit"] == "2"
+
+
+def test_list_logs_filter_by_model(client):
+    model_a = client.post("/api/models", json={"name": "FilterA", "kind": "web"}).json()
+    model_b = client.post("/api/models", json={"name": "FilterB", "kind": "web"}).json()
+    client.post("/api/logs", json={"model_id": model_a["id"]})
+    client.post("/api/logs", json={"model_id": model_b["id"]})
+
+    resp = client.get(f"/api/logs?model_id={model_a['id']}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["model_id"] == model_a["id"]
+
+
+def test_get_single_log(client):
+    model = client.post("/api/models", json={"name": "SingleModel", "kind": "web"}).json()
+    created = client.post("/api/logs", json={"model_id": model["id"], "quality_score": 7}).json()
+
+    resp = client.get(f"/api/logs/{created['id']}")
+    assert resp.status_code == 200
+    assert resp.json()["quality_score"] == 7
+
+
+def test_get_log_not_found(client):
+    resp = client.get("/api/logs/99999")
+    assert resp.status_code == 404
+
+
+def test_update_log(client):
+    model = client.post("/api/models", json={"name": "UpdateModel", "kind": "web"}).json()
+    created = client.post("/api/logs", json={"model_id": model["id"], "quality_score": 5}).json()
+
+    resp = client.patch(f"/api/logs/{created['id']}", json={"quality_score": 9})
+    assert resp.status_code == 200
+    assert resp.json()["quality_score"] == 9
+
+
+def test_delete_log(client):
+    model = client.post("/api/models", json={"name": "DeleteModel", "kind": "web"}).json()
+    created = client.post("/api/logs", json={"model_id": model["id"]}).json()
+
+    resp = client.delete(f"/api/logs/{created['id']}")
+    assert resp.status_code == 204
+
+    resp = client.get(f"/api/logs/{created['id']}")
+    assert resp.status_code == 404
+
+
+def test_export_csv(client):
+    model = client.post("/api/models", json={"name": "ExportModel", "kind": "web"}).json()
+    client.post("/api/logs", json={"model_id": model["id"], "quality_score": 8})
+
+    resp = client.get("/api/logs/export/csv")
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    lines = resp.text.strip().split("\n")
+    assert "model" in lines[0]
+    assert len(lines) >= 2
+
+
+def test_export_json(client):
+    model = client.post("/api/models", json={"name": "JsonExportModel", "kind": "web"}).json()
+    client.post("/api/logs", json={"model_id": model["id"], "quality_score": 8})
+
+    resp = client.get("/api/logs/export/json")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) >= 1
+    assert data[0]["model"] == "JsonExportModel"
+
+
+def test_quality_score_validation(client):
+    resp = client.post("/api/logs", json={"task_description": "test", "quality_score": 15})
+    assert resp.status_code == 422
+
+    resp = client.post("/api/logs", json={"task_description": "test", "quality_score": 0})
+    assert resp.status_code == 422
