@@ -53,8 +53,9 @@ class TestRequest(BaseModel):
 
 @router.post("/test")
 def test_notification(payload: TestRequest, session: Session = Depends(get_session)):
-    if payload.channel not in ("os_toast", "browser_overlay"):
-        raise HTTPException(400, "Invalid channel. Use 'os_toast' or 'browser_overlay'.")
+    valid_channels = ("os_toast", "browser_overlay", "telegram", "discord")
+    if payload.channel not in valid_channels:
+        raise HTTPException(400, f"Invalid channel. Use one of: {', '.join(valid_channels)}.")
 
     success = dispatch_test(session, payload.channel)
     return {"success": success, "channel": payload.channel}

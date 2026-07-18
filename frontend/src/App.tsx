@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
-import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3, Sun, Moon, Sparkles, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -12,6 +12,8 @@ const HistoryPage = lazy(() => import("@/pages/History"));
 const AnalyticsPage = lazy(() => import("@/pages/Analytics"));
 const Models = lazy(() => import("@/pages/Models"));
 const SettingsPage = lazy(() => import("@/pages/Settings"));
+const Recommender = lazy(() => import("@/pages/Recommender"));
+const Compare = lazy(() => import("@/pages/Compare"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const nav = [
@@ -19,6 +21,8 @@ const nav = [
   { to: "/log", label: "New Log", icon: PlusCircle },
   { to: "/history", label: "History", icon: History },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/recommender", label: "Recommender", icon: Sparkles },
+  { to: "/compare", label: "Compare", icon: GitCompare },
   { to: "/models", label: "Models", icon: Cpu },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -81,6 +85,8 @@ export default function App() {
               <Route path="/log/:id" element={<Log />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/recommender" element={<Recommender />} />
+              <Route path="/compare" element={<Compare />} />
               <Route path="/models" element={<Models />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

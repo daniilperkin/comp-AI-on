@@ -29,6 +29,8 @@ class SettingsUpdate(BaseModel):
     channel_browser_overlay: Optional[bool] = None
     channel_telegram: Optional[bool] = None
     channel_discord: Optional[bool] = None
+    telegram_webhook_url: Optional[str] = None
+    discord_webhook_url: Optional[str] = None
 
     @field_validator("reminder_time")
     @classmethod
@@ -79,6 +81,10 @@ def update_settings(payload: SettingsUpdate, session: Session = Depends(get_sess
         coerced["channel_telegram"] = _coerce_bool(data["channel_telegram"])
     if "channel_discord" in data:
         coerced["channel_discord"] = _coerce_bool(data["channel_discord"])
+    if "telegram_webhook_url" in data:
+        coerced["telegram_webhook_url"] = data["telegram_webhook_url"] or ""
+    if "discord_webhook_url" in data:
+        coerced["discord_webhook_url"] = data["discord_webhook_url"] or ""
 
     for key, value in coerced.items():
         existing = session.get(Setting, key)

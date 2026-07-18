@@ -98,3 +98,40 @@ export interface AppNotification {
   channel: string;
   shown: boolean;
 }
+
+export interface RecommendationEntry {
+  model: Model;
+  avg_quality: number;
+  entries: number;
+  success_rate: number;
+  score: number;
+}
+
+export interface RecommendationResult {
+  category_id: number | null;
+  category_name: string | null;
+  recommendations: RecommendationEntry[];
+  global_avg_quality: number;
+}
+
+export interface CompareCategoryStat {
+  category_id: number;
+  category_name: string;
+  category_color: string | null;
+  avg_quality: number | null;
+  entries: number;
+}
+
+export interface CompareModelStat {
+  model: Model;
+  avg_quality: number | null;
+  entries: number;
+  success_rate: number | null;
+  avg_latency_ms: number | null;
+  total_cost_usd: number | null;
+  per_category: CompareCategoryStat[];
+}
+
+export interface CompareResult {
+  models: CompareModelStat[];
+}

@@ -3,12 +3,14 @@ import { api } from "@/lib/api";
 import type {
   AppNotification,
   Category,
+  CompareResult,
   LeaderboardEntry,
   LogEntry,
   LogEntryInput,
   MatrixData,
   Model,
   OverviewStats,
+  RecommendationResult,
   TimelinePoint,
 } from "@/types";
 
@@ -24,6 +26,8 @@ export const queryKeys = {
   statsMatrix: ["stats", "matrix"] as const,
   settings: ["settings"] as const,
   notifications: ["notifications"] as const,
+  recommend: (categoryId?: number) => ["recommend", categoryId ?? "all"] as const,
+  compare: (modelIds: string) => ["compare", modelIds] as const,
 };
 
 const STALE_FOREVER = Infinity;
@@ -229,5 +233,25 @@ export function useDismissAllNotifications() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.notifications });
     },
+  });
+}
+
+export function useRecommend(categoryId?: number) {
+  return useQuery({
+    queryKey: queryKeys.recommend(categoryId),
+    queryFn: () =>
+      api.get<RecommendationResult>(
+        `/recommend${categoryId != null ? `?category_id=${categoryId}` : ""}`
+      ),
+    staleTime: 60_000,
+  });
+}
+
+export function useCompare(modelIds: string) {
+  return useQuery({
+    queryKey: queryKeys.compare(modelIds),
+    queryFn: () => api.get<CompareResult>(`/compare?model_ids=${modelIds}`),
+    enabled: modelIds.length > 0,
+    staleTime: 60_000,
   });
 }

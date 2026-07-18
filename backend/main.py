@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.db import init_db
-from backend.routers import categories, logs, models, notifications, settings, stats
+from backend.routers import categories, compare, logs, models, notifications, recommend, settings, stats
 from backend.scheduler import start_scheduler, stop_scheduler
 
 
@@ -35,6 +35,8 @@ app.include_router(categories.router)
 app.include_router(stats.router)
 app.include_router(settings.router)
 app.include_router(notifications.router)
+app.include_router(recommend.router)
+app.include_router(compare.router)
 
 
 @app.get("/api/health")

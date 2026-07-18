@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Save, Check, Monitor, Globe, Send } from "lucide-react";
+import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings, useUpdateSettings } from "@/lib/queries";
 import { api } from "@/lib/api";
@@ -14,6 +14,9 @@ interface ChannelConfig {
   icon: typeof Monitor;
   description: string;
   testChannel: string;
+  webhookUrlKey?: string;
+  webhookUrlLabel?: string;
+  webhookUrlPlaceholder?: string;
 }
 
 const CHANNELS: ChannelConfig[] = [
@@ -31,6 +34,26 @@ const CHANNELS: ChannelConfig[] = [
     description: "Toast appears in the bottom-right of the app",
     testChannel: "browser_overlay",
   },
+  {
+    key: "channel_telegram",
+    label: "Telegram",
+    icon: Send,
+    description: "Send via Telegram bot webhook",
+    testChannel: "telegram",
+    webhookUrlKey: "telegram_webhook_url",
+    webhookUrlLabel: "Telegram webhook URL",
+    webhookUrlPlaceholder: "https://api.telegram.org/bot<token>/sendMessage?chat_id=<id>",
+  },
+  {
+    key: "channel_discord",
+    label: "Discord",
+    icon: MessageCircle,
+    description: "Send via Discord webhook",
+    testChannel: "discord",
+    webhookUrlKey: "discord_webhook_url",
+    webhookUrlLabel: "Discord webhook URL",
+    webhookUrlPlaceholder: "https://discord.com/api/webhooks/<id>/<token>",
+  },
 ];
 
 export default function SettingsPage() {
@@ -40,6 +63,7 @@ export default function SettingsPage() {
   const [reminderTime, setReminderTime] = useState("18:00");
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [channels, setChannels] = useState<Record<string, boolean>>({});
+  const [webhookUrls, setWebhookUrls] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -49,10 +73,15 @@ export default function SettingsPage() {
     if (settings.reminder_time) setReminderTime(settings.reminder_time);
     setReminderEnabled(settings.reminder_enabled !== "false");
     const ch: Record<string, boolean> = {};
+    const wh: Record<string, string> = {};
     for (const c of CHANNELS) {
       ch[c.key] = settings[c.key] !== "false";
+      if (c.webhookUrlKey) {
+        wh[c.webhookUrlKey] = settings[c.webhookUrlKey] ?? "";
+      }
     }
     setChannels(ch);
+    setWebhookUrls(wh);
   }, [settings]);
 
   const saving = updateSettings.isPending;
@@ -60,13 +89,17 @@ export default function SettingsPage() {
   async function handleSave() {
     setSaved(false);
     setTestResult(null);
-    await updateSettings.mutateAsync({
+    const payload: Record<string, string | boolean> = {
       reminder_time: reminderTime,
       reminder_enabled: reminderEnabled ? "true" : "false",
-      ...Object.fromEntries(
-        CHANNELS.map((c) => [c.key, channels[c.key] ? "true" : "false"])
-      ),
-    });
+    };
+    for (const c of CHANNELS) {
+      payload[c.key] = channels[c.key] ? "true" : "false";
+      if (c.webhookUrlKey) {
+        payload[c.webhookUrlKey] = webhookUrls[c.webhookUrlKey] ?? "";
+      }
+    }
+    await updateSettings.mutateAsync(payload);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -147,13 +180,13 @@ export default function SettingsPage() {
             const Icon = ch.icon;
             const enabled = channels[ch.key] ?? false;
             return (
-              <div
-                key={ch.key}
-                className={cn(
-                  "flex items-center justify-between rounded-lg border p-4 transition-colors",
-                  enabled ? "border-primary/30 bg-primary/5" : "border-border"
-                )}
-              >
+              <div key={ch.key}>
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border p-4 transition-colors",
+                    enabled ? "border-primary/30 bg-primary/5" : "border-border"
+                  )}
+                >
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
@@ -170,6 +203,17 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={testing === ch.key}
+                    onClick={() => handleTest(ch.testChannel)}
+                    className="gap-1"
+                  >
+                    <Send className="h-3 w-3" />
+                    {testing === ch.key ? "Testing..." : "Test"}
+                  </Button>
+
                   <button
                     role="switch"
                     aria-checked={enabled}
@@ -186,18 +230,25 @@ export default function SettingsPage() {
                       )}
                     />
                   </button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={testing === ch.key}
-                    onClick={() => handleTest(ch.testChannel)}
-                    className="gap-1"
-                  >
-                    <Send className="h-3 w-3" />
-                    {testing === ch.key ? "Testing..." : "Test"}
-                  </Button>
                 </div>
+                </div>
+
+                {ch.webhookUrlKey && ch.webhookUrlLabel && enabled && (
+                  <div className="mt-3 pl-12">
+                    <Label className="text-xs">{ch.webhookUrlLabel}</Label>
+                    <Input
+                      value={webhookUrls[ch.webhookUrlKey] ?? ""}
+                      onChange={(e) =>
+                        setWebhookUrls((prev) => ({
+                          ...prev,
+                          [ch.webhookUrlKey!]: e.target.value,
+                        }))
+                      }
+                      placeholder={ch.webhookUrlPlaceholder}
+                      className="mt-1 font-mono text-xs"
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
