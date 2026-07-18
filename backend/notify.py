@@ -1,12 +1,14 @@
+import logging
 import os
 import subprocess
-import sys
 from datetime import datetime
 
 import httpx
 from sqlmodel import Session, select
 
 from backend.models import Notification, Setting
+
+logger = logging.getLogger("companion.notify")
 
 
 def get_setting(session: Session, key: str, default: str = "") -> str:
@@ -45,10 +47,10 @@ def send_os_toast(title: str, body: str) -> bool:
         )
         if "OK" not in result.stdout:
             msg = (result.stderr or result.stdout or "").strip()
-            print(f"[notify] OS toast failed: {msg}", file=sys.stderr)
+            logger.warning("OS toast failed: %s", msg)
         return "OK" in result.stdout
     except Exception as e:
-        print(f"[notify] OS toast failed: {e}", file=sys.stderr)
+        logger.warning("OS toast failed: %s", e)
         return False
 
 
@@ -61,20 +63,20 @@ def send_browser_notification(session: Session, title: str, body: str):
 def send_telegram_webhook(session: Session, title: str, body: str) -> bool:
     url = get_setting(session, "telegram_webhook_url", "")
     if not url:
-        print("[notify] Telegram webhook URL not configured", file=sys.stderr)
+        logger.warning("Telegram webhook URL not configured")
         return False
     try:
         resp = httpx.post(url, json={"text": f"{title}\n\n{body}"}, timeout=10)
         return resp.is_success
     except Exception as e:
-        print(f"[notify] Telegram webhook failed: {e}", file=sys.stderr)
+        logger.warning("Telegram webhook failed: %s", e)
         return False
 
 
 def send_discord_webhook(session: Session, title: str, body: str) -> bool:
     url = get_setting(session, "discord_webhook_url", "")
     if not url:
-        print("[notify] Discord webhook URL not configured", file=sys.stderr)
+        logger.warning("Discord webhook URL not configured")
         return False
     try:
         resp = httpx.post(
@@ -84,7 +86,7 @@ def send_discord_webhook(session: Session, title: str, body: str) -> bool:
         )
         return resp.is_success
     except Exception as e:
-        print(f"[notify] Discord webhook failed: {e}", file=sys.stderr)
+        logger.warning("Discord webhook failed: %s", e)
         return False
 
 

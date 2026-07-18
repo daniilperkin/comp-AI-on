@@ -1,10 +1,12 @@
 import os
 
-from sqlalchemy import event, inspect
+from sqlalchemy import event
 from sqlmodel import Session, create_engine
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
-SQLITE_URL = f"sqlite:///{DB_PATH}"
+from backend.config import settings
+
+DB_PATH = settings.resolved_db_path
+SQLITE_URL = settings.sqlite_url
 
 MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations")
 ALEMBIC_INI = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "alembic.ini")
@@ -37,11 +39,13 @@ def _run_alembic():
     cfg = Config(ALEMBIC_INI)
     cfg.set_main_option("script_location", MIGRATIONS_DIR)
 
+    from sqlalchemy import inspect
+
     inspector = inspect(engine)
     tables = inspector.get_table_names()
 
     if not tables:
-        command.stamp(cfg, "base")
+        command.stamp(cfg, "0001")
         command.upgrade(cfg, "head")
     elif "alembic_version" not in tables:
         command.stamp(cfg, "0001")
