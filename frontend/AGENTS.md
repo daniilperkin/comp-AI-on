@@ -52,12 +52,15 @@ frontend/
     │   ├── LogForm.tsx       # Full create/edit form
     │   └── LogTable.tsx      # Reusable log entry table
     └── pages/
+        ├── Analytics.tsx
+        ├── Compare.tsx
         ├── Dashboard.tsx
-        ├── Log.tsx
         ├── History.tsx
+        ├── Log.tsx
         ├── Models.tsx
-        ├── Settings.tsx
-        └── Analytics.tsx     # Phase 2
+        ├── NotFound.tsx
+        ├── Recommender.tsx
+        └── Settings.tsx
 ```
 
 ## Path Alias

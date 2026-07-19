@@ -299,7 +299,7 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 - Settings page (reminder time saves to DB)
 - Launchers (start.bat + start.ps1)
 
-### Phase 2 (IN PROGRESS) — Analytics
+### Phase 2 (DONE) — Analytics
 - Analytics endpoints: timeline, leaderboard, model-vs-category matrix
 - Separate `/analytics` page with recharts
 - Daily entry timeline chart
@@ -308,7 +308,7 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 - CSV + JSON export
 - UI polish + animations
 
-### Phase 3 (PLANNED) — Notifications
+### Phase 3 (DONE) — Notifications
 - APScheduler background job (once-daily at configured time)
 - Check if today's entry exists; if not, fire notifications
 - Native Windows toast (BurntToast/PowerShell subprocess)
@@ -316,7 +316,7 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 - Test notification button
 - Telegram + Discord webhook channels (pluggable)
 
-### Phase 4 (PLANNED) — Interactive recommender
+### Phase 4 (IN PROGRESS) — Interactive recommender
 - "Best tool for this task" interactive recommender
 - Side-by-side model comparison view
 - Script-based tracking automations

@@ -33,8 +33,10 @@ Write-Host ""
 $backendCmd = "Set-Location -LiteralPath '$Root'; & '$Root\backend\.venv\Scripts\python.exe' -m uvicorn backend.main:app --reload --port 8765"
 $frontendCmd = "Set-Location -LiteralPath '$Root\frontend'; npm run dev"
 
+Push-Location "C:\"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd
 Start-Sleep -Seconds 2
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendCmd
 Start-Sleep -Seconds 2
 Start-Process "http://localhost:6769"
+Pop-Location

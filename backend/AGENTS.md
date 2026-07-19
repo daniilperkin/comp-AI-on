@@ -20,15 +20,23 @@ backend/
 ├── __init__.py        # Makes `backend` a Python package
 ├── main.py            # FastAPI app, lifespan (init_db), router registration, static mount
 ├── db.py              # SQLAlchemy engine, get_session() dependency, init_db()
+├── config.py          # Configuration and settings
 ├── models.py          # ALL SQLModel tables + Base/Create/Update schemas
+├── notify.py          # Notification handlers
+├── scheduler.py       # APScheduler configuration
 ├── seed.py            # Default seed data (models, categories, settings)
-├── requirements.txt   # Python deps (fastapi, uvicorn, sqlmodel, pydantic-settings)
+├── requirements.txt   # Python deps
+├── ruff.toml          # Ruff linter config
 ├── database.db        # SQLite file (auto-generated, gitignored)
+├── tests/             # Tests directory
 └── routers/
     ├── __init__.py
+    ├── categories.py   # Category CRUD
+    ├── compare.py      # Model comparison endpoints
     ├── logs.py         # LogEntry CRUD
     ├── models.py       # Model CRUD
-    ├── categories.py   # Category CRUD
+    ├── notifications.py# Notification endpoints
+    ├── recommend.py    # Recommender endpoints
     ├── stats.py        # Stats/analytics endpoints
     └── settings.py     # Settings GET/PUT
 ```
@@ -135,8 +143,11 @@ Current (`requirements.txt`):
 - `uvicorn[standard]` — ASGI server
 - `sqlmodel` — ORM (SQLAlchemy + Pydantic)
 - `pydantic-settings` — settings management
-
-**Phase 3 will add**: `apscheduler` (notification scheduler), `httpx` (webhook calls).
+- `apscheduler` — notification scheduler
+- `alembic` — database migrations
+- `httpx` — webhook calls
+- `ruff` — code linter
+- `pytest` — testing framework
 
 ## Production Mode
 
