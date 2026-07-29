@@ -22,7 +22,7 @@
 - `PYTHONPATH` must be set when running uvicorn directly.
 - Frontend uses `@/` path alias for `src/` imports.
 - All API calls go through `src/lib/api.ts` — never use `fetch()` directly in components.
-- Dark mode is the only mode — don't add light mode toggles.
+- The app supports both light and dark themes via a ThemeProvider with system-theme detection and localStorage persistence.
 
 ### Code Style for Claude
 - No comments unless explicitly requested.

@@ -24,7 +24,7 @@
 - `PYTHONPATH` must be set to the repo root when running uvicorn directly.
 - Frontend uses `@/` path alias for `src/` imports — never use relative paths like `../../components`.
 - All API calls go through `src/lib/api.ts` — never use `fetch()` directly in components.
-- Dark mode is the only mode — don't add light mode toggles.
+- The app supports both light and dark themes via a ThemeProvider with system-theme detection and localStorage persistence.
 - No comments in code unless explicitly requested.
 
 ### Code Style for Gemini

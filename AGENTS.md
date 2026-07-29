@@ -45,18 +45,37 @@ comp[AI]on/
 │   ├── AGENTS.md              # Backend-specific agent guide
 │   ├── __init__.py            # Makes `backend` a package
 │   ├── requirements.txt       # Python deps
+│   ├── ruff.toml              # Ruff linter config
 │   ├── main.py                # FastAPI app entry, lifespan, router registration, static mount
 │   ├── db.py                  # Engine, session dependency, init_db()
+│   ├── config.py              # Configuration and settings
 │   ├── models.py              # All SQLModel tables + create/update schemas
 │   ├── seed.py                # Default seed data (models, categories, settings)
+│   ├── notify.py              # Notification handlers (toast, browser, webhooks)
+│   ├── scheduler.py           # APScheduler background job config
 │   ├── database.db            # SQLite file (gitignored, auto-generated)
+│   ├── migrations/            # Alembic migrations
+│   │   ├── env.py             # Alembic environment (render_as_batch=True)
+│   │   └── versions/
+│   │       ├── 0001_baseline.py
+│   │       └── 0002_unique_names.py
+│   ├── tests/                 # pytest test suite
+│   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
+│   │   ├── test_logs.py
+│   │   ├── test_recommender.py
+│   │   ├── test_scheduler.py
+│   │   ├── test_settings.py
+│   │   └── test_stats.py
 │   └── routers/
 │       ├── __init__.py
-│       ├── logs.py            # Log entry CRUD
+│       ├── logs.py            # Log entry CRUD + CSV/JSON export
 │       ├── models.py          # Model CRUD
 │       ├── categories.py      # Category CRUD
-│       ├── stats.py           # Analytics/stats endpoints
-│       └── settings.py       # Settings GET/PUT
+│       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, matrix)
+│       ├── settings.py        # Settings GET/PUT
+│       ├── notifications.py   # Notification endpoints (list, test, mark-shown, reschedule)
+│       ├── recommend.py       # Interactive recommender endpoint
+│       └── compare.py         # Side-by-side model comparison
 │
 └── frontend/
     ├── AGENTS.md              # Frontend-specific agent guide
@@ -72,14 +91,19 @@ comp[AI]on/
     └── src/
         ├── main.tsx           # React entry + BrowserRouter
         ├── App.tsx            # Router + sidebar layout
-        ├── index.css          # Tailwind directives + CSS vars (dark theme)
+        ├── index.css          # Tailwind directives + CSS vars (light + dark themes)
         ├── types.ts           # TS interfaces mirroring backend models
         ├── vite-env.d.ts
+        ├── test-setup.ts      # Vitest setup (jsdom, matchers)
         ├── lib/
         │   ├── api.ts         # Fetch wrapper (get/post/patch/put/delete)
+        │   ├── queries.ts     # Shared React Query hooks
+        │   ├── theme.tsx      # ThemeProvider — system-theme detection + localStorage persistence
         │   └── utils.ts        # cn(), formatDate(), formatDateShort()
         ├── components/
-        │   ├── ui/            # shadcn-style primitives (button, input, card, etc.)
+        │   ├── ui/            # shadcn-style primitives (button, input, label, textarea, select, card, badge, table)
+        │   ├── ErrorBoundary.tsx
+        │   ├── NotificationOverlay.tsx  # In-browser notification polling + display
         │   ├── StatCard.tsx
         │   ├── QuickAddBar.tsx # Quick-add form + useModelsCategories hook
         │   ├── LogForm.tsx     # Full log entry form (create/edit)
@@ -89,8 +113,11 @@ comp[AI]on/
             ├── Log.tsx         # Full log form page (create/edit)
             ├── History.tsx     # Filterable log table
             ├── Models.tsx      # Model CRUD UI
-            ├── Settings.tsx    # Settings (reminder time)
-            └── Analytics.tsx   # (Phase 2 — analytics charts)
+            ├── Settings.tsx    # Settings (reminder time, theme toggle)
+            ├── Analytics.tsx   # Analytics charts (timeline, leaderboard, matrix)
+            ├── Recommender.tsx # "Best tool for this task" interactive recommender
+            ├── Compare.tsx     # Side-by-side model comparison view
+            └── NotFound.tsx    # 404 fallback page
 ```
 
 ## 4. Development Setup
@@ -119,12 +146,12 @@ npm install
 ### Running dev servers manually
 ```powershell
 # Terminal 1 — Backend (port 8765)
-cd C:\Users\danyo\Desktop\Uni\comp[AI]on
-set PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
+cd <repo-root>
+set PYTHONPATH=<repo-root>
 backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8765
 
 # Terminal 2 — Frontend (port 6769)
-cd C:\Users\danyo\Desktop\Uni\comp[AI]on\frontend
+cd <repo-root>\frontend
 npm run dev
 ```
 
@@ -147,7 +174,7 @@ npm run dev
 ### Critical: PYTHONPATH
 The backend uses absolute imports like `from backend.models import ...`. You MUST set:
 ```
-PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
+PYTHONPATH=<repo-root>
 ```
 when running uvicorn directly. The launchers handle this automatically via `cmd /c set PYTHONPATH=...`.
 
@@ -222,7 +249,7 @@ Delete `backend/database.db` (and the `-wal`/`-shm` sidecars if present) and res
 ### Adding a schema change (Alembic)
 ```powershell
 # From repo root, with PYTHONPATH set (env.py imports backend.*)
-set PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
+set PYTHONPATH=<repo-root>
 backend\.venv\Scripts\python.exe -m alembic revision --autogenerate -m "short description"
 # Review the generated file in backend/migrations/versions/, then:
 backend\.venv\Scripts\python.exe -m alembic upgrade head
@@ -245,12 +272,24 @@ All API routes are prefixed with `/api`.
 | GET | `/api/health` | Liveness check |
 | GET, POST | `/api/logs` | List (with filters) / create log entry |
 | GET, PATCH, DELETE | `/api/logs/{id}` | Single log entry CRUD |
+| GET | `/api/logs/export/csv` | Download all log entries as CSV |
+| GET | `/api/logs/export/json` | Download all log entries as JSON |
 | GET, POST | `/api/models` | List / create model |
 | PATCH, DELETE | `/api/models/{id}` | Update / delete model |
 | GET, POST | `/api/categories` | List / create category |
 | PATCH, DELETE | `/api/categories/{id}` | Update / delete category |
 | GET | `/api/stats/overview` | Aggregate stats (total, avg quality, success rate, top models) |
+| GET | `/api/stats/timeline` | Daily entry timeline (for charts) |
+| GET | `/api/stats/leaderboard` | Model ranking by average quality score |
+| GET | `/api/stats/matrix` | Model-vs-category quality matrix |
 | GET, PUT | `/api/settings` | Get / update settings |
+| GET | `/api/notifications` | List pending notifications |
+| POST | `/api/notifications/test` | Fire a test notification |
+| POST | `/api/notifications/mark-all-shown` | Mark all notifications as shown |
+| PATCH | `/api/notifications/{id}/shown` | Mark a single notification as shown |
+| POST | `/api/notifications/reschedule` | Reschedule the daily reminder job |
+| GET | `/api/recommend` | Recommend best model for a given task/category |
+| GET | `/api/compare` | Side-by-side comparison of two or more models |
 
 ### Adding a new endpoint
 1. Create or edit a file in `backend/routers/`
@@ -328,12 +367,12 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 The repo path contains `comp[AI]on` — the brackets are wildcard characters in PowerShell. Always use `-LiteralPath` with PowerShell cmdlets:
 ```powershell
 # WRONG — brackets treated as wildcard
-Test-Path "C:\Users\danyo\Desktop\Uni\comp[AI]on"
-cd "C:\Users\danyo\Desktop\Uni\comp[AI]on"
+Test-Path "C:\path\to\comp[AI]on"
+cd "C:\path\to\comp[AI]on"
 
 # CORRECT
-Test-Path -LiteralPath "C:\Users\danyo\Desktop\Uni\comp[AI]on"
-Set-Location -LiteralPath "C:\Users\danyo\Desktop\Uni\comp[AI]on"
+Test-Path -LiteralPath "C:\path\to\comp[AI]on"
+Set-Location -LiteralPath "C:\path\to\comp[AI]on"
 ```
 
 When using `Start-Process -WorkingDirectory`, the brackets break it. Use `cmd /c set PYTHONPATH=... && python ...` instead.
@@ -355,7 +394,24 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 ## 12. Testing
 
-No test framework is set up yet. For now, verify changes by:
+The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
+
+### Backend (pytest) — 34 tests
+- Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
+- Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
+- Covers: logs CRUD, stats aggregation, settings, scheduler, recommender
+
+### Frontend (vitest) — 17 tests
+- Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
+- Run: `npm run test` in `frontend/`
+- Covers: `lib/api.ts`, `lib/utils.ts`, `lib/theme.tsx`
+
+### CI gate
+`.github/workflows/ci.yml` runs two jobs:
+1. **frontend-build** — ESLint → vitest → `npm run build` (TypeScript strict)
+2. **backend-check** — Ruff lint → `compileall` → pytest
+
+### Manual verification (in addition to tests)
 1. Run `npm run build` in `frontend/` — TypeScript strict mode catches errors
 2. Start backend and test API endpoints with `Invoke-WebRequest` (PowerShell)
 3. Use the frontend UI to test end-to-end flows
