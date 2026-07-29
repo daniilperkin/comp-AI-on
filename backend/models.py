@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -22,14 +21,14 @@ class Outcome(str, Enum):
 class ModelBase(SQLModel):
     name: str = Field(max_length=100)
     kind: ModelKind = Field(default=ModelKind.web)
-    vendor: Optional[str] = Field(default=None, max_length=100)
+    vendor: str | None = Field(default=None, max_length=100)
     is_active: bool = Field(default=True)
 
 
 class Model(ModelBase, table=True):
     __tablename__ = "models"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -39,23 +38,23 @@ class ModelCreate(ModelBase):
 
 
 class ModelUpdate(SQLModel):
-    name: Optional[str] = None
-    kind: Optional[ModelKind] = None
-    vendor: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    kind: ModelKind | None = None
+    vendor: str | None = None
+    is_active: bool | None = None
 
 
 # ---- Category ----
 
 class CategoryBase(SQLModel):
     name: str = Field(max_length=100)
-    color: Optional[str] = Field(default=None, max_length=32)
+    color: str | None = Field(default=None, max_length=32)
 
 
 class Category(CategoryBase, table=True):
     __tablename__ = "categories"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -65,31 +64,31 @@ class CategoryCreate(CategoryBase):
 
 
 class CategoryUpdate(SQLModel):
-    name: Optional[str] = None
-    color: Optional[str] = None
+    name: str | None = None
+    color: str | None = None
 
 
 # ---- LogEntry ----
 
 class LogEntryBase(SQLModel):
-    model_id: Optional[int] = Field(default=None, foreign_key="models.id")
-    model_name_text: Optional[str] = Field(default=None, max_length=200)
-    category_id: Optional[int] = Field(default=None, foreign_key="categories.id")
-    category_name_text: Optional[str] = Field(default=None, max_length=100)
-    task_description: Optional[str] = Field(default=None, max_length=500)
-    quality_score: Optional[int] = Field(default=None, ge=1, le=10)
-    outcome: Optional[Outcome] = None
-    input_tokens: Optional[int] = Field(default=None, ge=0)
-    output_tokens: Optional[int] = Field(default=None, ge=0)
-    cost_usd: Optional[float] = Field(default=None, ge=0)
-    latency_ms: Optional[int] = Field(default=None, ge=0)
-    notes: Optional[str] = Field(default=None, max_length=4000)
+    model_id: int | None = Field(default=None, foreign_key="models.id")
+    model_name_text: str | None = Field(default=None, max_length=200)
+    category_id: int | None = Field(default=None, foreign_key="categories.id")
+    category_name_text: str | None = Field(default=None, max_length=100)
+    task_description: str | None = Field(default=None, max_length=500)
+    quality_score: int | None = Field(default=None, ge=1, le=10)
+    outcome: Outcome | None = None
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cost_usd: float | None = Field(default=None, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+    notes: str | None = Field(default=None, max_length=4000)
 
 
 class LogEntry(LogEntryBase, table=True):
     __tablename__ = "log_entries"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
@@ -98,18 +97,18 @@ class LogEntryCreate(LogEntryBase):
 
 
 class LogEntryUpdate(SQLModel):
-    model_id: Optional[int] = None
-    model_name_text: Optional[str] = None
-    category_id: Optional[int] = None
-    category_name_text: Optional[str] = None
-    task_description: Optional[str] = None
-    quality_score: Optional[int] = Field(default=None, ge=1, le=10)
-    outcome: Optional[Outcome] = None
-    input_tokens: Optional[int] = Field(default=None, ge=0)
-    output_tokens: Optional[int] = Field(default=None, ge=0)
-    cost_usd: Optional[float] = Field(default=None, ge=0)
-    latency_ms: Optional[int] = Field(default=None, ge=0)
-    notes: Optional[str] = None
+    model_id: int | None = None
+    model_name_text: str | None = None
+    category_id: int | None = None
+    category_name_text: str | None = None
+    task_description: str | None = None
+    quality_score: int | None = Field(default=None, ge=1, le=10)
+    outcome: Outcome | None = None
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cost_usd: float | None = Field(default=None, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+    notes: str | None = None
 
 
 # ---- Setting ----
@@ -126,7 +125,7 @@ class Setting(SQLModel, table=True):
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     title: str = Field(max_length=200)
     body: str = Field(max_length=1000)

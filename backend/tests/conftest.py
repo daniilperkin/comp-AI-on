@@ -54,8 +54,8 @@ def fixture_engine(monkeypatch):
 @pytest.fixture(name="client")
 def fixture_client(engine):
     """FastAPI TestClient backed by the in-memory engine."""
-    from backend.main import app
     from backend.db import get_session
+    from backend.main import app
 
     def _override_session():
         with Session(engine) as session:

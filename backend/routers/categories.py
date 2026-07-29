@@ -43,4 +43,3 @@ def delete_category(category_id: int, session: Session = Depends(get_session)):
         raise HTTPException(404, "Category not found")
     session.delete(entry)
     session.commit()
-    return None

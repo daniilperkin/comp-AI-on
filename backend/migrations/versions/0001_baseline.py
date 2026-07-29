@@ -9,15 +9,15 @@ introduced. On a fresh database, ``alembic upgrade head`` runs this to create
 all tables. On the pre-existing developer database, this revision is recorded
 via ``alembic stamp head`` without re-running the DDL (tables already exist).
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0001"
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

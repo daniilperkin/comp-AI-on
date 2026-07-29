@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -9,7 +8,7 @@ from backend.db import engine
 from backend.models import LogEntry, Setting
 from backend.notify import dispatch_reminder
 
-scheduler: Optional[BackgroundScheduler] = None
+scheduler: BackgroundScheduler | None = None
 
 
 def get_setting(session: Session, key: str, default: str = "") -> str:
@@ -57,7 +56,6 @@ def start_scheduler():
 
 
 def reschedule():
-    global scheduler
     if scheduler is None:
         return
 

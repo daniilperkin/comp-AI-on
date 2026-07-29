@@ -44,10 +44,7 @@ def _run_alembic():
     inspector = inspect(engine)
     tables = inspector.get_table_names()
 
-    if not tables:
-        command.stamp(cfg, "0001")
-        command.upgrade(cfg, "head")
-    elif "alembic_version" not in tables:
+    if not tables or "alembic_version" not in tables:
         command.stamp(cfg, "0001")
         command.upgrade(cfg, "head")
     else:

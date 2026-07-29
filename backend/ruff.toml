@@ -1,3 +1,9 @@
 [lint]
 # Ignore E711 and E712 because SQLAlchemy overloads == for column comparisons.
-ignore = ["E711", "E712"]
+# Ignore B008 because FastAPI's Depends() in argument defaults is the
+#   framework's standard DI pattern (not a bug).
+# Ignore BLE001 because notify.py intentionally catches broad exceptions
+#   to prevent notification failures from crashing the app.
+# Ignore DTZ003 because this is a local-only app that uses UTC consistently
+#   without timezone-aware datetimes by design.
+ignore = ["E711", "E712", "B008", "BLE001", "DTZ003"]

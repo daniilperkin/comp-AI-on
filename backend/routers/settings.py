@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -22,15 +21,15 @@ def _coerce_bool(value) -> str:
 class SettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    reminder_enabled: Optional[bool] = None
-    reminder_time: Optional[str] = None
-    theme: Optional[str] = None
-    channel_os_toast: Optional[bool] = None
-    channel_browser_overlay: Optional[bool] = None
-    channel_telegram: Optional[bool] = None
-    channel_discord: Optional[bool] = None
-    telegram_webhook_url: Optional[str] = None
-    discord_webhook_url: Optional[str] = None
+    reminder_enabled: bool | None = None
+    reminder_time: str | None = None
+    theme: str | None = None
+    channel_os_toast: bool | None = None
+    channel_browser_overlay: bool | None = None
+    channel_telegram: bool | None = None
+    channel_discord: bool | None = None
+    telegram_webhook_url: str | None = None
+    discord_webhook_url: str | None = None
 
     @field_validator("reminder_time")
     @classmethod

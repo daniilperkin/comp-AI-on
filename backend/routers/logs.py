@@ -1,7 +1,6 @@
 import csv
 import io
 import json
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, func, select
@@ -12,7 +11,7 @@ from backend.models import Category, LogEntry, LogEntryCreate, LogEntryUpdate, M
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 
-def _apply_filters(stmt, model_id: Optional[int], category_id: Optional[int]):
+def _apply_filters(stmt, model_id: int | None, category_id: int | None):
     if model_id is not None:
         stmt = stmt.where(LogEntry.model_id == model_id)
     if category_id is not None:
@@ -25,8 +24,8 @@ def list_logs(
     response: Response,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    model_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    model_id: int | None = None,
+    category_id: int | None = None,
     session: Session = Depends(get_session),
 ):
     count_stmt = _apply_filters(select(func.count(LogEntry.id)), model_id, category_id)
@@ -105,7 +104,7 @@ def _resolve_names(session: Session, entries: list[LogEntry]) -> list[dict]:
     return rows
 
 
-def _export_rows(session: Session, model_id: Optional[int], category_id: Optional[int]) -> list[dict]:
+def _export_rows(session: Session, model_id: int | None, category_id: int | None) -> list[dict]:
     stmt = _apply_filters(
         select(LogEntry).order_by(LogEntry.created_at.desc()),
         model_id,
@@ -117,8 +116,8 @@ def _export_rows(session: Session, model_id: Optional[int], category_id: Optiona
 
 @router.get("/export/csv")
 def export_csv(
-    model_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    model_id: int | None = None,
+    category_id: int | None = None,
     session: Session = Depends(get_session),
 ):
     rows = _export_rows(session, model_id, category_id)
@@ -137,8 +136,8 @@ def export_csv(
 
 @router.get("/export/json")
 def export_json(
-    model_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    model_id: int | None = None,
+    category_id: int | None = None,
     session: Session = Depends(get_session),
 ):
     rows = _export_rows(session, model_id, category_id)
@@ -179,4 +178,3 @@ def delete_log(log_id: int, session: Session = Depends(get_session)):
         raise HTTPException(404, "Log entry not found")
     session.delete(entry)
     session.commit()
-    return None

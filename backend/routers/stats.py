@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case
@@ -72,7 +71,7 @@ def overview(session: Session = Depends(get_session)):
 
 @router.get("/timeline")
 def timeline(
-    days: Optional[int] = Query(default=None, ge=1, le=3650),
+    days: int | None = Query(default=None, ge=1, le=3650),
     session: Session = Depends(get_session),
 ):
     stmt = select(

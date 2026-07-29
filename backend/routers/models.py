@@ -45,4 +45,3 @@ def delete_model(model_id: int, session: Session = Depends(get_session)):
         raise HTTPException(404, "Model not found")
     session.delete(entry)
     session.commit()
-    return None

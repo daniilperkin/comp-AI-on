@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case, func
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/api/recommend", tags=["recommend"])
 
 @router.get("")
 def recommend(
-    category_id: Optional[int] = Query(default=None),
+    category_id: int | None = Query(default=None),
     top_n: int = Query(default=5, ge=1, le=20),
     session: Session = Depends(get_session),
 ):

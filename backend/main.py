@@ -2,15 +2,24 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, text
 
 from backend.config import settings
-from backend.db import init_db, get_session
-from backend.routers import categories, compare, logs, models, notifications, recommend, settings as settings_router, stats
+from backend.db import get_session, init_db
+from backend.routers import (
+    categories,
+    compare,
+    logs,
+    models,
+    notifications,
+    recommend,
+    stats,
+)
+from backend.routers import settings as settings_router
 from backend.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(

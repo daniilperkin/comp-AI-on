@@ -44,6 +44,7 @@ def send_os_toast(title: str, body: str) -> bool:
             text=True,
             timeout=30,
             env=env,
+            check=False,
         )
         if "OK" not in result.stdout:
             msg = (result.stderr or result.stdout or "").strip()
