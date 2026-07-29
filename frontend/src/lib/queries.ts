@@ -212,7 +212,7 @@ export function usePendingNotifications() {
     queryKey: queryKeys.notifications,
     queryFn: () => api.get<AppNotification[]>("/notifications"),
     staleTime: 0,
-    refetchInterval: false,
+    refetchInterval: 60_000,
   });
 }
 
