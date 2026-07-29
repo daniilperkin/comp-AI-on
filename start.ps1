@@ -30,7 +30,7 @@ Write-Host "[start] Launching backend (port 8765) and frontend (port 6769)..." -
 Write-Host "[start] Close both windows to stop the app." -ForegroundColor Green
 Write-Host ""
 
-$backendCmd = "Set-Location -LiteralPath '$Root'; & '$Root\backend\.venv\Scripts\python.exe' -m uvicorn backend.main:app --reload --port 8765"
+$backendCmd = "Set-Location -LiteralPath '$Root'; & '$Root\backend\.venv\Scripts\python.exe' -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8765"
 $frontendCmd = "Set-Location -LiteralPath '$Root\frontend'; npm run dev"
 
 Push-Location "C:\"

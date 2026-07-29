@@ -34,7 +34,7 @@ echo [start] Launching backend (port 8765) and frontend (port 6769)...
 echo [start] Close both windows to stop the app.
 echo.
 
-start "comp[AI]on - Backend" cmd /k "cd /d "%ROOT%" && "backend\.venv\Scripts\python.exe" -m uvicorn backend.main:app --reload --port 8765"
+start "comp[AI]on - Backend" cmd /k "cd /d "%ROOT%" && "backend\.venv\Scripts\python.exe" -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8765"
 timeout /t 2 /nobreak >nul
 start "comp[AI]on - Frontend" cmd /k "cd /d "%ROOT%\frontend" && npm run dev"
 timeout /t 2 /nobreak >nul
