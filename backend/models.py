@@ -79,10 +79,10 @@ class LogEntryBase(SQLModel):
     task_description: Optional[str] = Field(default=None, max_length=500)
     quality_score: Optional[int] = Field(default=None, ge=1, le=10)
     outcome: Optional[Outcome] = None
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
-    cost_usd: Optional[float] = None
-    latency_ms: Optional[int] = None
+    input_tokens: Optional[int] = Field(default=None, ge=0)
+    output_tokens: Optional[int] = Field(default=None, ge=0)
+    cost_usd: Optional[float] = Field(default=None, ge=0)
+    latency_ms: Optional[int] = Field(default=None, ge=0)
     notes: Optional[str] = Field(default=None, max_length=4000)
 
 
@@ -105,10 +105,10 @@ class LogEntryUpdate(SQLModel):
     task_description: Optional[str] = None
     quality_score: Optional[int] = Field(default=None, ge=1, le=10)
     outcome: Optional[Outcome] = None
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
-    cost_usd: Optional[float] = None
-    latency_ms: Optional[int] = None
+    input_tokens: Optional[int] = Field(default=None, ge=0)
+    output_tokens: Optional[int] = Field(default=None, ge=0)
+    cost_usd: Optional[float] = Field(default=None, ge=0)
+    latency_ms: Optional[int] = Field(default=None, ge=0)
     notes: Optional[str] = None
 
 
