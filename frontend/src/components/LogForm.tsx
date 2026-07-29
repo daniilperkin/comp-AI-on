@@ -108,8 +108,13 @@ export default function LogForm() {
         payload = { ...payload, model_id: newModel.id, model_name_text: null };
       }
 
-      if (payload.model_id === null) delete payload.model_id;
-      if (payload.category_id === null) delete payload.category_id;
+      // For PATCH (editing), keep null values in the payload so the
+      // backend can clear the FK. For POST (create), delete null fields
+      // since they're optional and we don't want to send unnecessary nulls.
+      if (!editingId) {
+        if (payload.model_id === null) delete payload.model_id;
+        if (payload.category_id === null) delete payload.category_id;
+      }
       if (!payload.quality_score) delete payload.quality_score;
       if (!payload.outcome) delete payload.outcome;
 
