@@ -13,7 +13,7 @@ frontend/dist/
 frontend/.vite/
 frontend/vite.config.js
 frontend/vite.config.d.ts
-frontend/tsconfig.tsbuildinfo
+frontend/*.tsbuildinfo
 
 # Logs
 *.log
@@ -23,6 +23,7 @@ frontend/tsconfig.tsbuildinfo
 .idea/
 *.swp
 .DS_Store
+Thumbs.db
 
 # Env
 .env
