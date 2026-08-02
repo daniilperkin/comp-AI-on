@@ -62,8 +62,8 @@ app.include_router(compare.router)
 
 @app.get("/api/health")
 def health(session: Session = Depends(get_session)):
-    result = session.exec(text("SELECT 1")).one()
-    return {"status": "ok", "db": "connected" if result else "error"}
+    session.exec(text("SELECT 1")).one()
+    return {"status": "ok", "db": "connected"}
 
 
 FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")

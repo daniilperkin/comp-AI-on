@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from backend.db import get_session
@@ -19,7 +20,11 @@ def list_models(active_only: bool = False, session: Session = Depends(get_sessio
 def create_model(payload: ModelCreate, session: Session = Depends(get_session)):
     entry = Model(**payload.model_dump())
     session.add(entry)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "A model with this name already exists")
     session.refresh(entry)
     return entry
 
@@ -33,7 +38,11 @@ def update_model(model_id: int, payload: ModelUpdate, session: Session = Depends
     for k, v in data.items():
         setattr(entry, k, v)
     session.add(entry)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "A model with this name already exists")
     session.refresh(entry)
     return entry
 

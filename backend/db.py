@@ -42,9 +42,14 @@ def _run_alembic():
     from sqlalchemy import inspect
 
     inspector = inspect(engine)
-    tables = inspector.get_table_names()
+    tables = set(inspector.get_table_names())
 
-    if not tables or "alembic_version" not in tables:
+    if not tables:
+        # Fresh database: run every migration from the empty baseline so the
+        # baseline tables (rev 0001) are actually created.
+        command.upgrade(cfg, "head")
+    elif "alembic_version" not in tables:
+        # Pre-Alembic database: adopt it at the baseline revision, then upgrade.
         command.stamp(cfg, "0001")
         command.upgrade(cfg, "head")
     else:

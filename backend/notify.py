@@ -1,7 +1,7 @@
 import logging
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from sqlmodel import Session, select
@@ -92,7 +92,9 @@ def send_discord_webhook(session: Session, title: str, body: str) -> bool:
 
 
 def dispatch_reminder(session: Session):
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0, tzinfo=None
+    )
     existing = session.exec(
         select(Notification).where(
             Notification.channel == "browser",

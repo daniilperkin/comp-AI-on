@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case
@@ -8,6 +8,10 @@ from backend.db import get_session
 from backend.models import Category, LogEntry, Model, Outcome
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _load_models(session: Session, model_ids) -> dict[int, Model]:
@@ -34,7 +38,7 @@ def overview(session: Session = Depends(get_session)):
         select(func.count(LogEntry.id)).where(LogEntry.outcome == Outcome.solved)
     ).one()
 
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = _utcnow_naive() - timedelta(days=7)
     last_7_days = session.exec(
         select(func.count(LogEntry.id)).where(LogEntry.created_at >= seven_days_ago)
     ).one()
@@ -81,7 +85,7 @@ def timeline(
     ).group_by(func.date(LogEntry.created_at)).order_by(func.date(LogEntry.created_at))
 
     if days is not None:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = _utcnow_naive() - timedelta(days=days)
         stmt = stmt.where(LogEntry.created_at >= cutoff)
 
     rows = session.exec(stmt).all()

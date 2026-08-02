@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from backend.db import get_session
@@ -17,7 +18,11 @@ def list_categories(session: Session = Depends(get_session)):
 def create_category(payload: CategoryCreate, session: Session = Depends(get_session)):
     entry = Category(**payload.model_dump())
     session.add(entry)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "A category with this name already exists")
     session.refresh(entry)
     return entry
 
@@ -31,7 +36,11 @@ def update_category(category_id: int, payload: CategoryUpdate, session: Session 
     for k, v in data.items():
         setattr(entry, k, v)
     session.add(entry)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "A category with this name already exists")
     session.refresh(entry)
     return entry
 

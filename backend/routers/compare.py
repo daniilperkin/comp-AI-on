@@ -34,42 +34,64 @@ def compare(
     if missing_ids:
         raise HTTPException(404, f"Models not found: {sorted(missing_ids)}")
 
+    # Single query for per-model overall stats (avoids N+1 round-trips).
+    overall_rows = session.exec(
+        select(
+            LogEntry.model_id,
+            func.avg(LogEntry.quality_score).label("avg_quality"),
+            func.count(LogEntry.id).label("entries"),
+            func.sum(case((LogEntry.outcome == Outcome.solved, 1), else_=0)).label("solved"),
+            func.avg(LogEntry.latency_ms).label("avg_latency"),
+            func.sum(LogEntry.cost_usd).label("total_cost"),
+        )
+        .where(LogEntry.model_id.in_(ids))
+        .group_by(LogEntry.model_id)
+    ).all()
+    overall_map: dict[int, tuple] = {row[0]: row for row in overall_rows}
+
+    # Single query for per-model-per-category breakdown (avoids N+1).
+    cat_rows = session.exec(
+        select(
+            LogEntry.model_id,
+            LogEntry.category_id,
+            func.avg(LogEntry.quality_score).label("avg_quality"),
+            func.count(LogEntry.id).label("entries"),
+        )
+        .where(LogEntry.model_id.in_(ids), LogEntry.category_id.is_not(None))
+        .group_by(LogEntry.model_id, LogEntry.category_id)
+    ).all()
+
+    category_ids = {r[1] for r in cat_rows if r[1] is not None}
+    cat_map: dict[int, Category] = {}
+    if category_ids:
+        cats = session.exec(select(Category).where(Category.id.in_(category_ids))).all()
+        cat_map = {c.id: c for c in cats}
+
+    # Group per-category rows by model_id for the loop below.
+    per_model_cats: dict[int, list] = {}
+    for model_id, cat_id, cat_avg_q, cat_entries in cat_rows:
+        per_model_cats.setdefault(model_id, []).append((cat_id, cat_avg_q, cat_entries))
+
     results = []
     for mid in ids:
-        rows = session.exec(
-            select(
-                func.avg(LogEntry.quality_score).label("avg_quality"),
-                func.count(LogEntry.id).label("entries"),
-                func.sum(case((LogEntry.outcome == Outcome.solved, 1), else_=0)).label("solved"),
-                func.avg(LogEntry.latency_ms).label("avg_latency"),
-                func.sum(LogEntry.cost_usd).label("total_cost"),
-            )
-            .where(LogEntry.model_id == mid)
-        ).one()
+        row = overall_map.get(mid)
+        if row is None:
+            results.append({
+                "model": model_map[mid],
+                "avg_quality": None,
+                "entries": 0,
+                "success_rate": None,
+                "avg_latency_ms": None,
+                "total_cost_usd": None,
+                "per_category": [],
+            })
+            continue
 
-        avg_q, entries, solved, avg_latency, total_cost = rows
+        _, avg_q, entries, solved, avg_latency, total_cost = row
         success_rate = float(solved) / float(entries) if entries and entries > 0 else None
 
-        cat_rows = session.exec(
-            select(
-                LogEntry.category_id,
-                func.avg(LogEntry.quality_score).label("avg_quality"),
-                func.count(LogEntry.id).label("entries"),
-            )
-            .where(LogEntry.model_id == mid, LogEntry.category_id.is_not(None))
-            .group_by(LogEntry.category_id)
-        ).all()
-
-        category_ids = [r[0] for r in cat_rows if r[0] is not None]
-        cat_map: dict[int, Category] = {}
-        if category_ids:
-            cats = session.exec(select(Category).where(Category.id.in_(category_ids))).all()
-            cat_map = {c.id: c for c in cats}
-
         per_category = []
-        for cat_id, cat_avg_q, cat_entries in cat_rows:
-            if cat_id is None:
-                continue
+        for cat_id, cat_avg_q, cat_entries in per_model_cats.get(mid, []):
             c = cat_map.get(cat_id)
             if c:
                 per_category.append({

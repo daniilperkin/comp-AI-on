@@ -46,6 +46,13 @@ def fixture_engine(monkeypatch):
     import backend.scheduler as sched_module
     monkeypatch.setattr(sched_module, "engine", engine)
 
+    # Prevent the real APScheduler thread from starting during tests — the
+    # lifespan hooks call start_scheduler()/stop_scheduler(). The scheduler
+    # helpers (parse_time, _local_tz) are unit-tested directly where needed.
+    import backend.main as main_module
+    monkeypatch.setattr(main_module, "start_scheduler", lambda: None)
+    monkeypatch.setattr(main_module, "stop_scheduler", lambda: None)
+
     yield engine
 
     engine.dispose()

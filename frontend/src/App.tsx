@@ -72,7 +72,7 @@ export default function App() {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <p className="mt-2 px-3 text-xs text-muted-foreground/60">v0.1.0 — local only</p>
+          <p className="mt-2 px-3 text-xs text-muted-foreground/60">v0.4.0 — local only</p>
         </div>
       </aside>
 

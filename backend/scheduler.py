@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlmodel import Session, select
 
+from backend.config import settings
 from backend.db import engine
 from backend.models import LogEntry, Setting
 from backend.notify import dispatch_reminder
@@ -17,6 +18,17 @@ def get_setting(session: Session, key: str, default: str = "") -> str:
 
 
 def _local_tz():
+    """Resolve the scheduler timezone.
+
+    Honours ``COMPANION_TIMEZONE`` when set (e.g. ``Europe/Berlin``); otherwise
+    falls back to the system local timezone. APScheduler's ``CronTrigger``
+    accepts a ``ZoneInfo`` / tzinfo and fires at the correct wall-clock hour.
+    """
+    tz_name = settings.timezone.strip() if settings.timezone else ""
+    if tz_name:
+        from zoneinfo import ZoneInfo
+
+        return ZoneInfo(tz_name)
     return datetime.now(timezone.utc).astimezone().tzinfo
 
 
