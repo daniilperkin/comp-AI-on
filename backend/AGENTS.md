@@ -71,7 +71,11 @@ class ModelCreate(Model, table=True):  # NEVER DO THIS
 
 1. In `models.py`, define `Base`, `Table(table=True)`, `Create`, and `Update` classes following the pattern above.
 2. If seed data is needed, add it to `seed.py` → `run_seed()`.
-3. The table is auto-created on next startup via `SQLModel.metadata.create_all(engine)`.
+3. Create and apply an Alembic migration from repo root:
+   ```powershell
+   python -m alembic revision --autogenerate -m "add new table"
+   python -m alembic upgrade head
+   ```
 
 ## Adding a New Router
 
@@ -124,15 +128,13 @@ rows = session.exec(
 
 ## Database Reset
 
-Delete `backend/database.db` and restart. `init_db()` in `db.py` calls:
-1. `SQLModel.metadata.create_all(engine)` — creates all tables
-2. `run_seed(session)` — inserts seed data if tables are empty
+Delete `backend/database.db` (and any `-wal`/`-shm` files) and restart. `init_db()` in `db.py` automatically runs `alembic upgrade head` and `run_seed(session)` to recreate the schema and initial seed data.
 
 ## Running the Backend
 
 ```powershell
 # Must set PYTHONPATH to repo root (absolute imports)
-set PYTHONPATH=C:\Users\danyo\Desktop\Uni\comp[AI]on
+set PYTHONPATH=C:\Users\danyo\Desktop\Daniil Perkin\1_Uni\Projekte\comp[AI]on
 backend\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8765
 ```
 

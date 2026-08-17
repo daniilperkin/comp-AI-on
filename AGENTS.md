@@ -59,9 +59,11 @@ comp[AI]on/
 │   │   └── versions/
 │   │       ├── 0001_baseline.py
 │   │       └── 0002_unique_names.py
-│   ├── tests/                 # pytest test suite
+│   ├── tests/                 # pytest test suite (50 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
+│   │   ├── test_categories.py
 │   │   ├── test_logs.py
+│   │   ├── test_models.py
 │   │   ├── test_recommender.py
 │   │   ├── test_scheduler.py
 │   │   ├── test_settings.py
@@ -396,10 +398,10 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 34 tests
+### Backend (pytest) — 50 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
-- Covers: logs CRUD, stats aggregation, settings, scheduler, recommender
+- Covers: logs CRUD, stats aggregation, settings, scheduler, recommender, categories, models
 
 ### Frontend (vitest) — 17 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)

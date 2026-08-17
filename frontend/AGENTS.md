@@ -34,9 +34,12 @@ frontend/
     ├── index.css            # Tailwind directives + CSS vars (dark theme)
     ├── types.ts             # TS interfaces mirroring backend models
     ├── vite-env.d.ts
+    ├── test-setup.ts        # Vitest setup (jsdom, matchers)
     ├── lib/
     │   ├── api.ts           # Fetch wrapper (get/post/patch/put/delete)
-    │   └── utils.ts          # cn(), formatDate(), formatDateShort()
+    │   ├── queries.ts       # Shared React Query hooks
+    │   ├── theme.tsx        # ThemeProvider — system detection + persistence
+    │   └── utils.ts         # cn(), formatDate(), formatDateShort()
     ├── components/
     │   ├── ui/              # shadcn-style primitives
     │   │   ├── button.tsx
@@ -126,7 +129,7 @@ MyComponent.displayName = "MyComponent";
 
 ## Theme / Styling
 
-- **Dark mode only** — `class="dark"` on `<html>` and `<body>`
+- **Dark mode default, light mode opt-in** — toggled via sidebar, persisted to DB settings and `localStorage`. `class="dark"` on `<html>` controls active palette.
 - CSS variables in `src/index.css` under `:root`
 - High-contrast palette:
   - Background: `hsl(222 47% 11%)` — deep navy
