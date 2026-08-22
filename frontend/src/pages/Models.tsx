@@ -6,11 +6,18 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { QueryError } from "@/components/QueryError";
 import { useCreateModel, useDeleteModel, useModels, useUpdateModel } from "@/lib/queries";
 import type { Model, ModelKind } from "@/types";
 
 export default function Models() {
-  const { data: modelsData } = useModels();
+  const {
+    data: modelsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useModels();
   const createModel = useCreateModel();
   const updateModel = useUpdateModel();
   const deleteModel = useDeleteModel();
@@ -91,48 +98,54 @@ export default function Models() {
         </Card>
       )}
 
-      <div className="space-y-3">
-        {models.map((m) =>
-          editing === m.id ? (
-            <Card key={m.id}>
-              <CardContent className="space-y-4 pt-4">
-                <ModelFields draft={draft} setDraft={setDraft} />
-                <div className="flex gap-2">
-                  <Button onClick={save} className="gap-1">
-                    <Check className="h-4 w-4" /> Save
-                  </Button>
-                  <Button variant="outline" onClick={cancel} className="gap-1">
-                    <X className="h-4 w-4" /> Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card key={m.id}>
-              <CardContent className="flex items-center justify-between pt-4">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {m.vendor ? `${m.vendor} · ` : ""}
-                      {m.kind}
-                    </p>
+      {isError ? (
+        <QueryError error={error} onRetry={() => void refetch()} />
+      ) : isLoading ? (
+        <p className="text-muted-foreground">Loading models…</p>
+      ) : (
+        <div className="space-y-3">
+          {models.map((m) =>
+            editing === m.id ? (
+              <Card key={m.id}>
+                <CardContent className="space-y-4 pt-4">
+                  <ModelFields draft={draft} setDraft={setDraft} />
+                  <div className="flex gap-2">
+                    <Button onClick={save} className="gap-1">
+                      <Check className="h-4 w-4" /> Save
+                    </Button>
+                    <Button variant="outline" onClick={cancel} className="gap-1">
+                      <X className="h-4 w-4" /> Cancel
+                    </Button>
                   </div>
-                  {!m.is_active && <Badge variant="outline">inactive</Badge>}
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => startEdit(m)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        )}
-      </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card key={m.id}>
+                <CardContent className="flex items-center justify-between pt-4">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="font-medium">{m.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.vendor ? `${m.vendor} · ` : ""}
+                        {m.kind}
+                      </p>
+                    </div>
+                    {!m.is_active && <Badge variant="outline">inactive</Badge>}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(m)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

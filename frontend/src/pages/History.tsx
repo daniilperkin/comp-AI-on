@@ -19,7 +19,11 @@ export default function HistoryPage() {
   const modelId = modelFilter ? Number(modelFilter) : undefined;
   const categoryId = categoryFilter ? Number(categoryFilter) : undefined;
 
-  const { data: entries, isLoading } = useLogs({ limit: 500, modelId, categoryId });
+  const { data: entries, isLoading, isError, error, refetch } = useLogs({
+    limit: 500,
+    modelId,
+    categoryId,
+  });
 
   function exportUrl(format: "csv" | "json") {
     const params = new URLSearchParams();
@@ -82,6 +86,8 @@ export default function HistoryPage() {
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading…</p>
+      ) : isError ? (
+        <QueryError error={error} onRetry={() => void refetch()} />
       ) : (
         <LogTable
           entries={entries ?? []}

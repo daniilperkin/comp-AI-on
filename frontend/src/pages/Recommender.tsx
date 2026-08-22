@@ -3,6 +3,7 @@ import { Sparkles, Trophy, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { QueryError } from "@/components/QueryError";
 import { useCategories, useModels, useRecommend } from "@/lib/queries";
 
 export default function Recommender() {
@@ -11,7 +12,13 @@ export default function Recommender() {
   const [categoryId, setCategoryId] = useState<string>("");
 
   const catId = categoryId ? Number(categoryId) : undefined;
-  const { data: result, isLoading } = useRecommend(catId);
+  const {
+    data: result,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useRecommend(catId);
 
   const activeModels = models ?? [];
 
@@ -47,6 +54,8 @@ export default function Recommender() {
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading recommendations…</p>
+      ) : isError ? (
+        <QueryError error={error} onRetry={() => void refetch()} />
       ) : result && result.recommendations.length > 0 ? (
         <>
           <Card className="animate-fade-in">

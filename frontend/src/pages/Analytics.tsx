@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { QueryError } from "@/components/QueryError";
 import { cn } from "@/lib/utils";
 import { Download, TrendingUp, Trophy, Grid3x3 } from "lucide-react";
 import {
@@ -38,11 +39,33 @@ function useChartTheme() {
 
 export default function AnalyticsPage() {
   const chartTheme = useChartTheme();
-  const { data: timeline } = useStatsTimeline();
-  const { data: leaderboard } = useStatsLeaderboard();
-  const { data: matrix } = useStatsMatrix();
+  const timelineQ = useStatsTimeline();
+  const leaderboardQ = useStatsLeaderboard();
+  const matrixQ = useStatsMatrix();
 
-  const loading = !timeline || !leaderboard || !matrix;
+  const loading = !timelineQ.data || !leaderboardQ.data || !matrixQ.data;
+
+  const firstError = timelineQ.error ?? leaderboardQ.error ?? matrixQ.error;
+  if (firstError) {
+    return (
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-sm text-muted-foreground">
+            Which models win at which tasks.
+          </p>
+        </div>
+        <QueryError
+          error={firstError}
+          onRetry={() => {
+            timelineQ.refetch();
+            leaderboardQ.refetch();
+            matrixQ.refetch();
+          }}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -51,6 +74,10 @@ export default function AnalyticsPage() {
       </div>
     );
   }
+
+  const timeline = timelineQ.data;
+  const leaderboard = leaderboardQ.data;
+  const matrix = matrixQ.data;
 
   const hasData = (timeline?.length ?? 0) > 0 || (leaderboard?.length ?? 0) > 0;
 
