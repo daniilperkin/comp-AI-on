@@ -1,86 +1,55 @@
-# GEMINI.md — Guidance for Gemini
+# GEMINI.md — Guidance for Gemini/Antigravity
 
-> This file provides Gemini-specific instructions for working on comp[AI]on.
-> Read AGENTS.md first for full project conventions.
+> **Single source of truth for project conventions: [`AGENTS.md`](./AGENTS.md).**
+> Read `AGENTS.md` first for setup, commands, architecture, code conventions, and the complete project guide.
+> This file adds Antigravity-specific gotchas and prompting tips.
 
-## When You Are Working on This Project
+## Antigravity-specific gotchas
 
-### Strengths to Leverage
-- **Large context window**: You can hold the entire backend + frontend codebase in context. Use this to understand cross-file dependencies before making changes.
-- **Multimodal capability**: If screenshots of the UI are provided, analyze them for layout/styling issues.
-- **Code generation**: You're good at generating boilerplate for new endpoints, components, and pages — follow the existing patterns closely.
+### SQLModel trap (#1 bug source)
+NEVER create `class FooCreate(Foo, table=True)` — use the base-class pattern. This crashes at runtime with `AttributeError`.
 
-### Workflow Preferences for Gemini
-1. Read `AGENTS.md` fully before making any changes.
-2. When adding a new endpoint, check `backend/routers/` for the existing pattern and follow it exactly.
-3. When adding a new frontend page, check `src/App.tsx` for the routing pattern and `src/pages/` for page structure.
-4. Always mirror backend model changes in `frontend/src/types.ts`.
-5. After frontend changes, verify with `npm run build` (TypeScript strict mode).
-6. After backend changes, verify by starting the server and testing endpoints.
-
-### Things Gemini Should Watch For
-- **SQLModel trap**: NEVER create `class FooCreate(Foo, table=True)` — use the base-class pattern. This is the #1 bug source.
-- The folder name `comp[AI]on` has brackets — always use `-LiteralPath` with PowerShell cmdlets (Test-Path, Set-Location, etc.).
-- `PYTHONPATH` must be set to the repo root when running uvicorn directly.
-- Frontend uses `@/` path alias for `src/` imports — never use relative paths like `../../components`.
-- All API calls go through `src/lib/api.ts` — never use `fetch()` directly in components.
-- The app supports both light and dark themes via a ThemeProvider with system-theme detection and localStorage persistence.
-- No comments in code unless explicitly requested.
-
-### Code Style for Gemini
-- Python: absolute imports (`from backend.models import ...`), no relative imports.
-- TypeScript: strict mode, no `any` types, no unused vars.
-- React: functional components with hooks only, no class components.
-- Styling: Tailwind utility classes in JSX, use `cn()` for conditional classes.
-- Components: use `class-variance-authority` for variants, `forwardRef` for UI primitives.
-
-### Pattern Reference
-
-**Backend endpoint pattern:**
+**Correct pattern:**
 ```python
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from backend.db import get_session
-from backend.models import MyModel, MyModelCreate
+class ModelBase(SQLModel):
+    name: str
 
-router = APIRouter(prefix="/api/myresource", tags=["myresource"])
+class Model(ModelBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
 
-@router.get("")
-def list_items(session: Session = Depends(get_session)):
-    return session.exec(select(MyModel)).all()
-
-@router.post("", status_code=201)
-def create_item(payload: MyModelCreate, session: Session = Depends(get_session)):
-    entry = MyModel(**payload.model_dump())
-    session.add(entry)
-    session.commit()
-    session.refresh(entry)
-    return entry
+class ModelCreate(ModelBase):
+    pass  # No table=True!
 ```
 
-**Frontend page pattern:**
-```tsx
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+### PYTHONPATH must be set
+When running uvicorn directly (not via the launcher), `PYTHONPATH` must point to the repo root. Without it, `from backend.models import ...` fails.
 
-export default function MyPage() {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
-    api.get("/myresource").then(setData);
-  }, []);
-
-  return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold">My Page</h1>
-      {/* content */}
-    </div>
-  );
-}
+### `comp[AI]on` bracket trap
+The folder name has `[AI]` brackets. In PowerShell, `Set-Location comp[AI]on` matches `compAon` as a wildcard. Use `-LiteralPath` or Python's `pathlib`:
+```powershell
+Set-Location -LiteralPath "comp[AI]on"
 ```
 
-### When Unsure
+### API client rule
+All HTTP calls go through `src/lib/api.ts` in the frontend. Never use `fetch()` directly in components.
+
+### Path alias
+Frontend uses `@/` path alias for `src/` imports — never use relative paths like `../../components`.
+
+## Antigravity prompting tips
+
+| Do | Don't |
+|---|---|
+| "analyze src/pages/Dashboard.tsx in frontend" | "analyze frontend" (too vague) |
+| "verify with npm run build in frontend/" | "check if it works" (no command) |
+| "search across all .ts and .tsx files in frontend/src/" | "find usages" (picks wrong tool) |
+
+## Pattern reference
+
+Backend endpoints follow: `routers/<resource>.py` → `APIRouter(prefix="/api/<resource>")` → register in `main.py`.
+Frontend pages follow: `src/pages/MyPage.tsx` → route in `App.tsx` → nav entry.
+
+## When unsure
 - Read `AGENTS.md` for canonical conventions.
-- Read `backend/AGENTS.md` before touching backend code.
 - Read `frontend/AGENTS.md` before touching frontend code.
+- Read `backend/AGENTS.md` before touching backend code.
