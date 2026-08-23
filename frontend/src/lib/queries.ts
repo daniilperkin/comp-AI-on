@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { api } from "@/lib/api";
 import type {
   AppNotification,
@@ -85,6 +86,56 @@ export function useLogs(params?: LogsParams) {
     queryFn: () => api.get<LogEntry[]>(`/logs${buildLogsQuery(params ?? {})}`),
     staleTime: STALE_DEFAULT,
   });
+}
+
+export const LOGS_PAGE_SIZE = 50;
+
+/**
+ * Paged logs. The backend reports the filtered row count in the X-Total-Count
+ * response header (see backend/routers/logs.py), which request() returns via
+ * the headers — so callers can page through everything instead of silently
+ * capping at one large limit.
+ */
+export function useLogsPaged(
+  params?: Omit<LogsParams, "limit" | "offset">,
+) {
+  const [page, setPage] = useState(0);
+  const query = useQuery({
+    queryKey: queryKeys.logs({ ...params, offset: page * LOGS_PAGE_SIZE }),
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/logs${buildLogsQuery({
+          ...params,
+          limit: LOGS_PAGE_SIZE,
+          offset: page * LOGS_PAGE_SIZE,
+        })}`,
+        { headers: { "Content-Type": "application/json" } },
+      );
+      if (!res.ok) throw new Error(res.statusText);
+      return {
+        entries: (await res.json()) as LogEntry[],
+        total: Number(res.headers.get("X-Total-Count") ?? "0"),
+      };
+    },
+    staleTime: STALE_DEFAULT,
+    placeholderData: (prev) => prev,
+  });
+
+  const total = query.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / LOGS_PAGE_SIZE));
+
+  return {
+    entries: query.data?.entries ?? [],
+    total,
+    page,
+    pageCount,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+    prevPage: () => setPage((p) => Math.max(0, p - 1)),
+    nextPage: () => setPage((p) => Math.min(pageCount - 1, p + 1)),
+  };
 }
 
 export function useStatsOverview() {

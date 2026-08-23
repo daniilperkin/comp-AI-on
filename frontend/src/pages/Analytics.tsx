@@ -268,6 +268,7 @@ function getBarColor(index: number): string {
 
 function MatrixHeatmap({ data }: { data: MatrixData }) {
   const { models, categories, cells } = data;
+  const { primary } = useChartTheme();
 
   const cellMap = new Map<string, MatrixCell>();
   for (const c of cells) {
@@ -276,11 +277,14 @@ function MatrixHeatmap({ data }: { data: MatrixData }) {
 
   function colorForScore(score: number | null): string {
     if (score === null) return "transparent";
+    // Colorblind-safe sequential ramp: instead of interpolating between two
+    // hues (red→green is indistinguishable for deuteranopia/protanopia),
+    // scale the theme's primary hue in OPACITY only — low scores sit near
+    // the background, high ones approach full primary saturation. A single
+    // hue varying in intensity is readable under every common CVD type.
     const t = score / 10;
-    const r = Math.round(239 + (38 - 239) * t);
-    const g = Math.round(68 + (199 - 68) * t);
-    const b = Math.round(68 + (252 - 68) * t);
-    return `rgba(${r}, ${g}, ${b}, ${0.15 + t * 0.55})`;
+    const alpha = 0.12 + t * 0.78;
+    return `hsl(${primary} / ${alpha.toFixed(2)})`;
   }
 
   return (

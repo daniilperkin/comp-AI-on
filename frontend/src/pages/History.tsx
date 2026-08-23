@@ -6,7 +6,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { QueryError } from "@/components/QueryError";
 import { cn } from "@/lib/utils";
 import { Plus, Download } from "lucide-react";
-import { useCategories, useLogs, useModels } from "@/lib/queries";
+import {
+  LOGS_PAGE_SIZE,
+  useCategories,
+  useLogsPaged,
+  useModels,
+} from "@/lib/queries";
 
 export default function HistoryPage() {
   const { data: modelsData } = useModels();
@@ -20,11 +25,18 @@ export default function HistoryPage() {
   const modelId = modelFilter ? Number(modelFilter) : undefined;
   const categoryId = categoryFilter ? Number(categoryFilter) : undefined;
 
-  const { data: entries, isLoading, isError, error, refetch } = useLogs({
-    limit: 500,
-    modelId,
-    categoryId,
-  });
+  const {
+    entries,
+    total,
+    page,
+    pageCount,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    prevPage,
+    nextPage,
+  } = useLogsPaged({ modelId, categoryId });
 
   function exportUrl(format: "csv" | "json") {
     const params = new URLSearchParams();
@@ -90,10 +102,39 @@ export default function HistoryPage() {
       ) : isError ? (
         <QueryError error={error} onRetry={() => void refetch()} />
       ) : (
-        <LogTable
-          entries={entries ?? []}
-          emptyHint="No entries match these filters."
-        />
+        <>
+          <LogTable entries={entries} emptyHint="No entries match these filters." />
+          <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
+            <span>
+              {total === 0
+                ? "0 entries"
+                : `${page * LOGS_PAGE_SIZE + 1}–${Math.min((page + 1) * LOGS_PAGE_SIZE, total)} of ${total}`}
+            </span>
+            {pageCount > 1 && (
+              <span className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}
+                  onClick={prevPage}
+                  disabled={page === 0}
+                >
+                  ← Prev
+                </button>
+                <span>
+                  Page {page + 1} / {pageCount}
+                </span>
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}
+                  onClick={nextPage}
+                  disabled={page >= pageCount - 1}
+                >
+                  Next →
+                </button>
+              </span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
