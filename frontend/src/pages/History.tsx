@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { LogTable } from "@/components/LogTable";
 import { Select } from "@/components/ui/select";
 import { buttonVariants } from "@/components/ui/button";
+import { QueryError } from "@/components/QueryError";
 import { cn } from "@/lib/utils";
 import { Plus, Download } from "lucide-react";
 import { useCategories, useLogs, useModels } from "@/lib/queries";

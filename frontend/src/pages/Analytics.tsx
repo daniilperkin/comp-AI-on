@@ -18,10 +18,22 @@ import type { MatrixData, MatrixCell } from "@/types";
 
 const CHART_HEIGHT = 280;
 
+// Read a CSS custom property off :root at render time. Re-computed whenever
+// the theme flips so charts always track the active palette.
+function readCssVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+  return value || fallback;
+}
+
 function useChartTheme() {
   const { theme } = useTheme();
   return useMemo(() => {
     const isDark = theme === "dark";
+    // Raw "H S% L%" components of the theme's primary color (see index.css).
+    const primary = readCssVar("--primary", isDark ? "40 33% 96%" : "0 0% 15%");
     return {
       tooltip: {
         backgroundColor: isDark ? "hsl(0 0% 10%)" : "hsl(0 0% 100%)",
@@ -32,7 +44,8 @@ function useChartTheme() {
       },
       grid: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
       axis: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
-      area: isDark ? "hsl(199 89% 48%)" : "hsl(199 89% 38%)",
+      primary,
+      area: `hsl(${primary})`,
     };
   }, [theme]);
 }
