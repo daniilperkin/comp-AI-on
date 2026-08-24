@@ -51,7 +51,7 @@ frontend/
     │   │   ├── badge.tsx
     │   │   └── table.tsx
     │   ├── StatCard.tsx
-    │   ├── QuickAddBar.tsx   # Exports useModelsCategories hook
+    │   ├── QuickAddBar.tsx   # Quick-add form (consumes useModelsCategories)
     │   ├── LogForm.tsx       # Full create/edit form
     │   └── LogTable.tsx      # Reusable log entry table
     └── pages/
@@ -131,11 +131,11 @@ MyComponent.displayName = "MyComponent";
 
 - **Dark mode default, light mode opt-in** — toggled via sidebar, persisted to DB settings and `localStorage`. `class="dark"` on `<html>` controls active palette.
 - CSS variables in `src/index.css` under `:root`
-- High-contrast palette:
-  - Background: `hsl(222 47% 11%)` — deep navy
-  - Primary: `hsl(199 89% 48%)` — bright sky blue
-  - Card: `hsl(222 47% 14%)` — slightly lighter navy
-  - Border: `hsl(217 33% 24%)` — muted blue-gray
+- High-contrast palette (warm-gray neutral, see `src/index.css`):
+  - Background (dark): `hsl(0 0% 7%)`
+  - Primary (dark): `hsl(40 33% 96%)` — warm off-white
+  - Card: `hsl(0 0% 10%)`
+  - Border: `255 255 255 / 0.08` (translucent white)
 - Border radius: `--radius: 0.5rem`
 - Tailwind config extends colors to use CSS vars: `bg-background`, `text-foreground`, `bg-card`, `text-primary`, etc.
 
@@ -164,10 +164,10 @@ MyComponent.displayName = "MyComponent";
 
 ## Shared Hooks
 
-### `useModelsCategories()` (from `QuickAddBar.tsx`)
-Fetches models and categories on mount. Returns `{ models, categories, setModels, setCategories }`.
+### `useModelsCategories()` (from `lib/queries.ts`)
+Fetches models and categories. Returns `{ models, categories }`.
 ```tsx
-import { useModelsCategories } from "@/components/QuickAddBar";
+import { useModelsCategories } from "@/lib/queries";
 const { models, categories } = useModelsCategories();
 ```
 

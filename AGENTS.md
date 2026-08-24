@@ -222,7 +222,7 @@ when running uvicorn directly. The launchers handle this automatically via `cmd 
 ### CSS / Styling
 - Tailwind utility classes in JSX — no separate CSS files except `index.css`
 - CSS variables for theming defined in `src/index.css` under `:root`
-- High-contrast dark palette: background `hsl(222 47% 11%)`, primary `hsl(199 89% 48%)`
+- High-contrast dark palette: background `hsl(0 0% 7%)`, primary `hsl(40 33% 96%)` (warm-gray neutral — see `src/index.css`)
 - Border radius uses `--radius` CSS var (0.5rem)
 
 ## 7. Database
@@ -357,9 +357,9 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 - Test notification button
 - Telegram + Discord webhook channels (pluggable)
 
-### Phase 4 (IN PROGRESS) — Interactive recommender
-- "Best tool for this task" interactive recommender
-- Side-by-side model comparison view
+### Phase 4 (DONE) — Interactive recommender
+- "Best tool for this task" interactive recommender (`Recommender.tsx` + `routers/recommend.py`)
+- Side-by-side model comparison view (`Compare.tsx` + `routers/compare.py`)
 - Script-based tracking automations
 - Optional auth
 
