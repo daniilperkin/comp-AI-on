@@ -5,7 +5,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { QueryError } from "@/components/QueryError";
-import { cn } from "@/lib/utils";
+import { cn, formatCost } from "@/lib/utils";
 import { Download, TrendingUp, Trophy, Grid3x3 } from "lucide-react";
 import {
   useStatsLeaderboard,
@@ -13,7 +13,7 @@ import {
   useStatsTimeline,
 } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { MatrixData, MatrixCell } from "@/types";
 
 const CHART_HEIGHT = 280;
@@ -52,7 +52,8 @@ function useChartTheme() {
 
 export default function AnalyticsPage() {
   const chartTheme = useChartTheme();
-  const timelineQ = useStatsTimeline();
+  const [timelineDays, setTimelineDays] = useState<number | null>(30);
+  const timelineQ = useStatsTimeline(timelineDays ?? undefined);
   const leaderboardQ = useStatsLeaderboard();
   const matrixQ = useStatsMatrix();
 
@@ -133,11 +134,28 @@ export default function AnalyticsPage() {
       ) : (
         <>
           <Card className="animate-fade-in">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 Daily entry timeline
               </CardTitle>
+              <div className="flex items-center rounded-md border border-border p-0.5 text-xs">
+                {([7, 30, 90, null] as const).map((d) => (
+                  <button
+                    key={d === null ? "all" : d}
+                    type="button"
+                    onClick={() => setTimelineDays(d)}
+                    className={cn(
+                      "rounded px-2.5 py-1 transition-colors",
+                      timelineDays === d
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {d === null ? "All" : `${d}d`}
+                  </button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -208,7 +226,16 @@ export default function AnalyticsPage() {
                         tickLine={false}
                         width={120}
                       />
-                      <Tooltip contentStyle={chartTheme.tooltip} />
+                      <Tooltip
+                        contentStyle={chartTheme.tooltip}
+                        formatter={(value, name, item) => {
+                          if (name === "Avg quality" && item?.payload) {
+                            const p = item.payload as { total_cost?: number };
+                            return [`${value} / 10 · ${formatCost(p.total_cost ?? null)} spent`, name];
+                          }
+                          return [value, name];
+                        }}
+                      />
                       <Bar
                         dataKey="avg_quality"
                         name="Avg quality"

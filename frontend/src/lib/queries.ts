@@ -12,6 +12,7 @@ import type {
   Model,
   OverviewStats,
   RecommendationResult,
+  SpendData,
   TimelinePoint,
 } from "@/types";
 
@@ -23,6 +24,7 @@ export const queryKeys = {
   logsTotal: ["logs", "total"] as const,
   statsOverview: ["stats", "overview"] as const,
   statsTimeline: ["stats", "timeline"] as const,
+  statsSpend: ["stats", "spend"] as const,
   statsLeaderboard: ["stats", "leaderboard"] as const,
   statsMatrix: ["stats", "matrix"] as const,
   settings: ["settings"] as const,
@@ -146,11 +148,13 @@ export function useStatsOverview() {
   });
 }
 
-export function useStatsTimeline() {
+export function useStatsTimeline(days?: number) {
   return useQuery({
-    queryKey: queryKeys.statsTimeline,
-    queryFn: () => api.get<TimelinePoint[]>("/stats/timeline"),
+    queryKey: [...queryKeys.statsTimeline, days ?? null],
+    queryFn: () =>
+      api.get<TimelinePoint[]>(days ? `/stats/timeline?days=${days}` : "/stats/timeline"),
     staleTime: STALE_DEFAULT,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -166,6 +170,15 @@ export function useStatsMatrix() {
   return useQuery({
     queryKey: queryKeys.statsMatrix,
     queryFn: () => api.get<MatrixData>("/stats/matrix"),
+    staleTime: STALE_DEFAULT,
+  });
+}
+
+export function useStatsSpend(days?: number) {
+  return useQuery({
+    queryKey: [...queryKeys.statsSpend, days ?? null],
+    queryFn: () =>
+      api.get<SpendData>(days ? `/stats/spend?days=${days}` : "/stats/spend"),
     staleTime: STALE_DEFAULT,
   });
 }
