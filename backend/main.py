@@ -18,6 +18,7 @@ from backend.routers import (
     notifications,
     recommend,
     stats,
+    sync,
 )
 from backend.routers import settings as settings_router
 from backend.scheduler import start_scheduler, stop_scheduler
@@ -58,6 +59,7 @@ app.include_router(settings_router.router)
 app.include_router(notifications.router)
 app.include_router(recommend.router)
 app.include_router(compare.router)
+app.include_router(sync.router)
 
 
 @app.get("/api/health")

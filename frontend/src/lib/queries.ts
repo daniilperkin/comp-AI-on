@@ -319,3 +319,45 @@ export function useCompare(modelIds: string) {
     staleTime: 60_000,
   });
 }
+
+// ---- OpenRouter usage sync ----
+
+export interface SyncStatus {
+  configured: boolean;
+  enabled: boolean;
+  has_api_key: boolean;
+  last_sync_at: string | null;
+}
+
+export interface SyncResult {
+  ok: boolean;
+  fetched: number;
+  created: number;
+  skipped_existing: number;
+  errors: number;
+  last_sync_at?: string;
+  status?: SyncStatus;
+  error?: string;
+}
+
+export function useSyncStatus() {
+  return useQuery({
+    queryKey: ["sync", "status"],
+    queryFn: () => api.get<SyncStatus>("/sync/status"),
+    staleTime: 30_000,
+  });
+}
+
+export function useRunSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (daysBack: number) =>
+      api.post<SyncResult>("/sync/run", { days_back: daysBack }),
+    onSuccess: () => {
+      // Imported entries change logs + all stats.
+      qc.invalidateQueries({ queryKey: ["logs"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["sync"] });
+    },
+  });
+}

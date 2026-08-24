@@ -99,6 +99,10 @@ class LogEntryBase(SQLModel):
     cost_usd: float | None = Field(default=None, ge=0)
     latency_ms: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=4000)
+    # Provider-side identifier (e.g. OpenRouter generation ID) for entries
+    # imported via usage sync; NULL for manually logged entries. The partial
+    # unique index on it makes re-syncs idempotent.
+    external_id: str | None = Field(default=None, max_length=200)
 
 
 class LogEntry(LogEntryBase, table=True):
