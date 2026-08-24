@@ -3,7 +3,7 @@ import { QuickAddBar } from "@/components/QuickAddBar";
 import { LogTable } from "@/components/LogTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatCost } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { useModels, useStatsOverview, useLogs } from "@/lib/queries";
 
@@ -42,6 +42,13 @@ export default function Dashboard() {
           <StatCard
             label="Success rate"
             value={stats?.success_rate !== null && stats?.success_rate !== undefined ? `${Math.round(stats.success_rate * 100)}%` : null}
+          />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+          <StatCard
+            label="Spend (30d)"
+            value={formatCost(stats?.total_cost_30d ?? null)}
+            hint={stats?.total_cost_all_time ? `all time ${formatCost(stats.total_cost_all_time)}` : undefined}
           />
         </div>
         <div className="animate-fade-in" style={{ animationDelay: "240ms" }}>

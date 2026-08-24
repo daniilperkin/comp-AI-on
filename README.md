@@ -2,6 +2,13 @@
 
 A minimalist developer log and dashboard for tracking daily AI model consumption. Captures which models (local, web, or agentic) excel at specific programming or creative tasks so you always know the best tool for the job.
 
+## Features
+
+- **Quality-focused logging** — score every AI interaction 1–10 with outcome, category, tokens, latency
+- **Analytics dashboard** — daily timeline (7/30/90-day range control), model leaderboard, quality×category matrix
+- **Spend tracking** — set per-model token prices ($/MTok); costs derive automatically from logged tokens, or enter explicit costs. Dashboard shows 30-day and all-time spend
+- **Recommender & compare views** — "best tool for this task" and side-by-side comparison
+
 ## Stack
 
 - **Frontend**: React (Vite) + Tailwind CSS + shadcn/ui

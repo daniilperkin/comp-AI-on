@@ -7,6 +7,8 @@ export interface Model {
   kind: ModelKind;
   vendor: string | null;
   is_active: boolean;
+  input_price_per_mtok: number | null;
+  output_price_per_mtok: number | null;
   created_at: string;
 }
 
@@ -54,6 +56,8 @@ export interface OverviewStats {
   avg_quality: number | null;
   success_rate: number | null;
   last_7_days: number;
+  total_cost_30d: number;
+  total_cost_all_time: number;
   top_models: Array<{
     model: Model;
     avg_quality: number;
@@ -72,6 +76,19 @@ export interface LeaderboardEntry {
   avg_quality: number | null;
   entries: number;
   success_rate: number | null;
+  total_cost: number;
+}
+
+export interface SpendByModel {
+  model_id: number | null;
+  model_name: string;
+  total_cost: number;
+  entries: number;
+}
+
+export interface SpendData {
+  daily: Array<{ date: string; cost: number }>;
+  by_model: SpendByModel[];
 }
 
 export interface MatrixCell {

@@ -33,6 +33,10 @@ class ModelBase(SQLModel):
     kind: ModelKind = Field(default=ModelKind.web)
     vendor: str | None = Field(default=None, max_length=100)
     is_active: bool = Field(default=True)
+    # USD per million tokens — optional; enables derived cost when a log entry
+    # has token counts but no explicit cost_usd.
+    input_price_per_mtok: float | None = Field(default=None, ge=0)
+    output_price_per_mtok: float | None = Field(default=None, ge=0)
 
 
 class Model(ModelBase, table=True):
@@ -52,6 +56,8 @@ class ModelUpdate(SQLModel):
     kind: ModelKind | None = None
     vendor: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
+    input_price_per_mtok: float | None = Field(default=None, ge=0)
+    output_price_per_mtok: float | None = Field(default=None, ge=0)
 
 
 # ---- Category ----

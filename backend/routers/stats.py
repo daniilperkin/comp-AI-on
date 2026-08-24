@@ -43,6 +43,36 @@ def overview(session: Session = Depends(get_session)):
         select(func.count(LogEntry.id)).where(LogEntry.created_at >= seven_days_ago)
     ).one()
 
+    thirty_days_ago = _utcnow_naive() - timedelta(days=30)
+
+    def _spend_total(where_clause=None) -> float:
+        # Explicit cost_usd always wins; token-derived cost needs a join to the
+        # priced model. LEFT JOIN keeps unpriced/unknown models in the total
+        # with their explicit costs only. COALESCE + SUM yields one row even on
+        # an empty table (0.0), so no NoResultFound on a fresh DB.
+        stmt = (
+            select(
+                func.coalesce(
+                    func.sum(
+                        func.coalesce(
+                            LogEntry.cost_usd,
+                            LogEntry.input_tokens / 1_000_000 * Model.input_price_per_mtok
+                            + LogEntry.output_tokens / 1_000_000 * Model.output_price_per_mtok,
+                        )
+                    ),
+                    0.0,
+                ).label("total_cost")
+            )
+            .select_from(LogEntry)
+            .outerjoin(Model, LogEntry.model_id == Model.id)
+        )
+        if where_clause is not None:
+            stmt = stmt.where(where_clause)
+        return float(session.exec(stmt).one() or 0.0)
+
+    spend_all_time = _spend_total()
+    spend_30d = _spend_total(LogEntry.created_at >= thirty_days_ago)
+
     rows = session.exec(
         select(
             LogEntry.model_id,
@@ -69,6 +99,8 @@ def overview(session: Session = Depends(get_session)):
         "avg_quality": round(avg_quality, 2) if avg_quality is not None else None,
         "success_rate": round(solved / total, 2) if total > 0 else None,
         "last_7_days": last_7_days,
+        "total_cost_30d": round(spend_30d, 6),
+        "total_cost_all_time": round(spend_all_time, 6),
         "top_models": top_models,
     }
 
@@ -108,7 +140,19 @@ def leaderboard(session: Session = Depends(get_session)):
             func.avg(LogEntry.quality_score).label("avg_quality"),
             func.count(LogEntry.id).label("entries"),
             func.sum(case((LogEntry.outcome == Outcome.solved, 1), else_=0)).label("solved"),
+            func.coalesce(
+                func.sum(
+                    func.coalesce(
+                        LogEntry.cost_usd,
+                        LogEntry.input_tokens / 1_000_000 * Model.input_price_per_mtok
+                        + LogEntry.output_tokens / 1_000_000 * Model.output_price_per_mtok,
+                    )
+                ),
+                0.0,
+            ).label("total_cost"),
         )
+        .select_from(LogEntry)
+        .outerjoin(Model, LogEntry.model_id == Model.id)
         .where(LogEntry.model_id.is_not(None))
         .group_by(LogEntry.model_id)
         .order_by(func.avg(LogEntry.quality_score).desc())
@@ -116,7 +160,7 @@ def leaderboard(session: Session = Depends(get_session)):
 
     model_map = _load_models(session, [r[0] for r in rows])
     result = []
-    for model_id, avg_q, entries, solved in rows:
+    for model_id, avg_q, entries, solved, total_cost in rows:
         if model_id is None:
             continue
         m = model_map.get(model_id)
@@ -126,8 +170,110 @@ def leaderboard(session: Session = Depends(get_session)):
                 "avg_quality": round(avg_q, 2) if avg_q is not None else None,
                 "entries": entries,
                 "success_rate": round(solved / entries, 2) if entries > 0 else None,
+                "total_cost": round(total_cost or 0.0, 6),
             })
 
+    return result
+
+
+@router.get("/spend")
+def spend(
+    days: int | None = Query(default=None, ge=1, le=3650),
+    session: Session = Depends(get_session),
+):
+    """Per-day spend series plus per-model breakdown for the window.
+
+    Cost per entry: explicit cost_usd wins; otherwise derived from token
+    counts and the model's per-MTok prices (unknown pricing contributes 0 —
+    never guessed). Both aggregations run in Python over one joined row scan
+    so unknown-cost entries stay visible instead of being dropped by SQL SUM.
+    """
+    daily_rows = _daily_spend(session, days)
+    by_model = _spend_by_model(session, days)
+
+    return {
+        "daily": daily_rows,
+        "by_model": by_model,
+    }
+
+
+def _spend_rows(session: Session, days: int | None) -> list[tuple]:
+    """One scan of (model_id, explicit_cost, in_tok, out_tok, p_in, p_out)."""
+    stmt = select(
+        LogEntry.model_id,
+        LogEntry.cost_usd.label("explicit_cost"),
+        LogEntry.input_tokens,
+        LogEntry.output_tokens,
+        Model.input_price_per_mtok,
+        Model.output_price_per_mtok,
+    ).select_from(LogEntry).outerjoin(Model, LogEntry.model_id == Model.id)
+
+    if days is not None:
+        cutoff = _utcnow_naive() - timedelta(days=days)
+        stmt = stmt.where(LogEntry.created_at >= cutoff)
+
+    return session.exec(stmt).all()
+
+
+def _entry_cost(explicit, in_tok, out_tok, p_in, p_out) -> float | None:
+    """Explicit cost wins; else derive from tokens+prices; else None."""
+    if explicit is not None:
+        return float(explicit)
+    if None in (in_tok, out_tok, p_in, p_out):
+        return None
+    return in_tok / 1_000_000 * p_in + out_tok / 1_000_000 * p_out
+
+
+def _daily_spend(session: Session, days: int | None) -> list[dict]:
+    """Sum of per-entry costs grouped by day (Python-side; see _spend_by_model)."""
+    stmt = select(
+        func.date(LogEntry.created_at).label("date"),
+        LogEntry.cost_usd.label("explicit_cost"),
+        LogEntry.input_tokens,
+        LogEntry.output_tokens,
+        Model.input_price_per_mtok,
+        Model.output_price_per_mtok,
+    ).select_from(LogEntry).outerjoin(Model, LogEntry.model_id == Model.id)
+
+    if days is not None:
+        cutoff = _utcnow_naive() - timedelta(days=days)
+        stmt = stmt.where(LogEntry.created_at >= cutoff)
+
+    totals: dict[str, float] = {}
+    for date, explicit, in_tok, out_tok, p_in, p_out in session.exec(stmt).all():
+        c = _entry_cost(explicit, in_tok, out_tok, p_in, p_out)
+        if c is None:
+            continue
+        totals[date] = totals.get(date, 0.0) + c
+    return [
+        {"date": d, "cost": round(v, 6)}
+        for d, v in sorted(totals.items())
+    ]
+
+
+def _spend_by_model(session: Session, days: int | None) -> list[dict]:
+    """Total derived cost per model. Python-side sum: SQL SUM would silently
+    drop NULL-cost rows from unpriced models, undercounting entries."""
+    totals: dict[int | None, dict] = {}
+    for model_id, explicit, in_tok, out_tok, p_in, p_out in _spend_rows(session, days):
+        c = _entry_cost(explicit, in_tok, out_tok, p_in, p_out)
+        bucket = totals.setdefault(model_id, {"cost": 0.0, "entries": 0})
+        bucket["entries"] += 1
+        if c is not None:
+            bucket["cost"] += c
+
+    model_map = _load_models(session, [m for m in totals if m is not None])
+    result = []
+    for model_id, bucket in sorted(
+        totals.items(), key=lambda kv: kv[1]["cost"], reverse=True
+    ):
+        m = model_map.get(model_id)
+        result.append({
+            "model_id": model_id,
+            "model_name": m.name if m else "Unknown",
+            "total_cost": round(bucket["cost"], 6),
+            "entries": bucket["entries"],
+        })
     return result
 
 

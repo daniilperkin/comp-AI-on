@@ -34,6 +34,8 @@ export default function Models() {
       kind: (draft.kind ?? "web") as ModelKind,
       vendor: draft.vendor ?? "",
       is_active: draft.is_active ?? true,
+      input_price_per_mtok: draft.input_price_per_mtok ?? null,
+      output_price_per_mtok: draft.output_price_per_mtok ?? null,
     };
     if (editing) {
       await updateModel.mutateAsync({ id: editing, input: payload });
@@ -184,6 +186,38 @@ function ModelFields({
           value={draft.vendor ?? ""}
           onChange={(e) => setDraft({ ...draft, vendor: e.target.value })}
           placeholder="e.g. Anthropic"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Input price ($/MTok)</Label>
+        <Input
+          type="number"
+          step="any"
+          min="0"
+          value={draft.input_price_per_mtok ?? ""}
+          onChange={(e) =>
+            setDraft({
+              ...draft,
+              input_price_per_mtok: e.target.value === "" ? null : Number(e.target.value),
+            })
+          }
+          placeholder="optional — enables cost tracking"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Output price ($/MTok)</Label>
+        <Input
+          type="number"
+          step="any"
+          min="0"
+          value={draft.output_price_per_mtok ?? ""}
+          onChange={(e) =>
+            setDraft({
+              ...draft,
+              output_price_per_mtok: e.target.value === "" ? null : Number(e.target.value),
+            })
+          }
+          placeholder="optional — enables cost tracking"
         />
       </div>
     </div>

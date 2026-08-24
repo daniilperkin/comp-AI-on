@@ -58,8 +58,9 @@ comp[AI]on/
 │   │   ├── env.py             # Alembic environment (render_as_batch=True)
 │   │   └── versions/
 │   │       ├── 0001_baseline.py
-│   │       └── 0002_unique_names.py
-│   ├── tests/                 # pytest test suite (50 tests)
+│   │       ├── 0002_unique_names.py
+│   │       └── 0004_model_pricing.py
+│   ├── tests/                 # pytest test suite (67 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_categories.py
 │   │   ├── test_logs.py
@@ -73,7 +74,7 @@ comp[AI]on/
 │       ├── logs.py            # Log entry CRUD + CSV/JSON export
 │       ├── models.py          # Model CRUD
 │       ├── categories.py      # Category CRUD
-│       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, matrix)
+│       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, spend, matrix)
 │       ├── settings.py        # Settings GET/PUT
 │       ├── notifications.py   # Notification endpoints (list, test, mark-shown, reschedule)
 │       ├── recommend.py       # Interactive recommender endpoint
@@ -398,10 +399,10 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 50 tests
+### Backend (pytest) — 67 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
-- Covers: logs CRUD, stats aggregation, settings, scheduler, recommender, categories, models
+- Covers: logs CRUD, stats aggregation (incl. spend analytics), cost derivation, settings, scheduler, recommender, categories, models
 
 ### Frontend (vitest) — 17 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
