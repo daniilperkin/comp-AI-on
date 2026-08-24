@@ -1,12 +1,23 @@
 import csv
 import io
 import json
+import logging
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, func, select
 
+from backend.budget import check_budget
+from backend.costing import derive_cost
 from backend.db import get_session
 from backend.models import Category, LogEntry, LogEntryCreate, LogEntryUpdate, Model
+from backend.notify import (
+    send_browser_notification,
+    send_discord_webhook,
+    send_telegram_webhook,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
@@ -16,6 +27,30 @@ def _apply_filters(stmt, model_id: int | None, category_id: int | None):
         stmt = stmt.where(LogEntry.model_id == model_id)
     if category_id is not None:
         stmt = stmt.where(LogEntry.category_id == category_id)
+    return stmt
+
+
+def _parse_date(name: str, value: str | None) -> datetime | None:
+    """Parse a YYYY-MM-DD filter param. Naive UTC — matches created_at storage."""
+    if value is None:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(422, f"{name} must be YYYY-MM-DD, got {value!r}")
+
+
+def _apply_date_filters(
+    stmt,
+    date_from: datetime | None,
+    date_to: datetime | None,
+):
+    # date_to is inclusive: entries ON that day must match, so compare
+    # against midnight of the NEXT day.
+    if date_from is not None:
+        stmt = stmt.where(LogEntry.created_at >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(LogEntry.created_at < date_to + timedelta(days=1))
     return stmt
 
 
@@ -57,13 +92,25 @@ def create_log(payload: LogEntryCreate, session: Session = Depends(get_session))
     session.add(entry)
     session.commit()
     session.refresh(entry)
+
+    # Budget check happens after the entry is safely stored — a budget crash
+    # must never lose the user's log. Fires at most once per day.
+    try:
+        event = check_budget(session)
+        if event:
+            send_browser_notification(session, event["title"], event["body"])
+            send_discord_webhook(session, event["title"], event["body"])
+            send_telegram_webhook(session, event["title"], event["body"])
+    except Exception:
+        logger.exception("budget check failed after log creation")
+
     return entry
 
 
 CSV_COLUMNS = [
     "id", "created_at", "model", "category", "task_description",
     "quality_score", "outcome", "input_tokens", "output_tokens",
-    "cost_usd", "latency_ms", "notes",
+    "cost_usd", "derived_cost_usd", "latency_ms", "notes",
 ]
 
 
@@ -104,23 +151,49 @@ def _resolve_names(session: Session, entries: list[LogEntry]) -> list[dict]:
     return rows
 
 
-def _export_rows(session: Session, model_id: int | None, category_id: int | None) -> list[dict]:
+def _export_rows(
+    session: Session,
+    model_id: int | None,
+    category_id: int | None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> list[dict]:
     stmt = _apply_filters(
         select(LogEntry).order_by(LogEntry.created_at.desc()),
         model_id,
         category_id,
     )
+    stmt = _apply_date_filters(stmt, date_from, date_to)
     entries = session.exec(stmt).all()
-    return _resolve_names(session, list(entries))
+
+    model_map: dict[int, Model] = {}
+    if entries:
+        ids = {e.model_id for e in entries if e.model_id is not None}
+        if ids:
+            model_map = {
+                m.id: m for m in session.exec(select(Model).where(Model.id.in_(ids))).all()
+            }
+
+    rows = _resolve_names(session, list(entries))
+    # Attach derived cost (explicit cost wins; else tokens x model prices).
+    for row, entry in zip(rows, entries):
+        m = model_map.get(entry.model_id) if entry.model_id is not None else None
+        row["derived_cost_usd"] = derive_cost(entry, m)
+    return rows
 
 
 @router.get("/export/csv")
 def export_csv(
     model_id: int | None = None,
     category_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     session: Session = Depends(get_session),
 ):
-    rows = _export_rows(session, model_id, category_id)
+    rows = _export_rows(
+        session, model_id, category_id,
+        _parse_date("date_from", date_from), _parse_date("date_to", date_to),
+    )
 
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS)
@@ -138,9 +211,14 @@ def export_csv(
 def export_json(
     model_id: int | None = None,
     category_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     session: Session = Depends(get_session),
 ):
-    rows = _export_rows(session, model_id, category_id)
+    rows = _export_rows(
+        session, model_id, category_id,
+        _parse_date("date_from", date_from), _parse_date("date_to", date_to),
+    )
 
     return Response(
         content=json.dumps(rows, indent=2, default=str),

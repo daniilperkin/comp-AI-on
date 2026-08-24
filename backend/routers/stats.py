@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case
 from sqlmodel import Session, func, select
 
@@ -319,4 +319,97 @@ def matrix(session: Session = Depends(get_session)):
         "models": models,
         "categories": categories,
         "cells": cells,
+    }
+
+
+@router.get("/monthly")
+def monthly(
+    month: str = Query(description="Month to summarize, as YYYY-MM"),
+    session: Session = Depends(get_session),
+):
+    """One row per model for the given month: entries, tokens, spend, quality.
+
+    Cost follows the standard precedence (explicit > token-derived); entries
+    whose cost is unknown are counted under `unknown_cost_entries` so the
+    month's total is not silently read as complete.
+    """
+    try:
+        month_start = datetime.strptime(month, "%Y-%m")
+    except ValueError:
+        raise HTTPException(422, f"month must be YYYY-MM, got {month!r}")
+    # Next month boundary; naive UTC matches created_at storage.
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1)
+
+    rows = session.exec(
+        select(
+            LogEntry.model_id,
+            func.count(LogEntry.id).label("entries"),
+            func.sum(LogEntry.input_tokens).label("input_tokens"),
+            func.sum(LogEntry.output_tokens).label("output_tokens"),
+            func.avg(LogEntry.quality_score).label("avg_quality"),
+        )
+        .select_from(LogEntry)
+        .outerjoin(Model, LogEntry.model_id == Model.id)
+        .where(LogEntry.created_at >= month_start, LogEntry.created_at < month_end)
+        .group_by(LogEntry.model_id)
+    ).all()
+
+    model_map = _load_models(session, [r[0] for r in rows])
+    result = []
+    total_cost = 0.0
+    unknown_entries = 0
+    for model_id, entries, in_tok, out_tok, avg_q in rows:
+        m = model_map.get(model_id)
+        name = m.name if m else "Unknown"
+        # Python-side cost sum: SQL SUM would drop NULL-cost rows entirely.
+        cost = 0.0
+        unknown = 0
+        scan = session.exec(
+            select(
+                LogEntry.cost_usd,
+                LogEntry.input_tokens,
+                LogEntry.output_tokens,
+                Model.input_price_per_mtok,
+                Model.output_price_per_mtok,
+            )
+            .select_from(LogEntry)
+            .outerjoin(Model, LogEntry.model_id == Model.id)
+            .where(
+                LogEntry.created_at >= month_start,
+                LogEntry.created_at < month_end,
+                LogEntry.model_id == model_id if model_id is not None else LogEntry.model_id.is_(None),
+            )
+        ).all()
+        for explicit, it, ot, pin, pout in scan:
+            c = (
+                float(explicit) if explicit is not None
+                else (it / 1e6 * pin + ot / 1e6 * pout) if None not in (it, ot, pin, pout)
+                else None
+            )
+            if c is None:
+                unknown += 1
+            else:
+                cost += c
+
+        total_cost += cost
+        unknown_entries += unknown
+        result.append({
+            "model_id": model_id,
+            "model_name": name,
+            "entries": entries,
+            "input_tokens": int(in_tok or 0),
+            "output_tokens": int(out_tok or 0),
+            "total_cost": round(cost, 6),
+            "avg_quality": round(avg_q, 2) if avg_q is not None else None,
+            "unknown_cost_entries": unknown,
+        })
+
+    return {
+        "month": month,
+        "total_cost": round(total_cost, 6),
+        "unknown_cost_entries": unknown_entries,
+        "by_model": sorted(result, key=lambda r: r["total_cost"], reverse=True),
     }
