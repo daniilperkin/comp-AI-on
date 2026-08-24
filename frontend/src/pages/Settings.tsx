@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSettings, useUpdateSettings } from "@/lib/queries";
+import { useSettings, useUpdateSettings, useRunSync, useSyncStatus } from "@/lib/queries";
+import type { SyncResult } from "@/lib/queries";
 import { api } from "@/lib/api";
 
 interface ChannelConfig {
@@ -62,16 +63,27 @@ export default function SettingsPage() {
 
   const [reminderTime, setReminderTime] = useState("18:00");
   const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [dailyBudget, setDailyBudget] = useState("");
   const [channels, setChannels] = useState<Record<string, boolean>>({});
   const [webhookUrls, setWebhookUrls] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
 
+  // OpenRouter sync
+  const syncStatusQ = useSyncStatus();
+  const runSync = useRunSync();
+  const [syncApiKey, setSyncApiKey] = useState("");
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | { ok: false; error: string } | null>(null);
+
   useEffect(() => {
     if (!settings) return;
     if (settings.reminder_time) setReminderTime(settings.reminder_time);
     setReminderEnabled(settings.reminder_enabled !== "false");
+    setDailyBudget(settings.daily_budget_usd ?? "");
+    setSyncApiKey(settings.openrouter_api_key ?? "");
+    setSyncEnabled(settings.openrouter_sync_enabled !== "false");
     const ch: Record<string, boolean> = {};
     const wh: Record<string, string> = {};
     for (const c of CHANNELS) {
@@ -84,6 +96,18 @@ export default function SettingsPage() {
     setWebhookUrls(wh);
   }, [settings]);
 
+  // Keep the sync status (has_api_key / last_sync_at) fresh after saves.
+  const syncStatus = syncStatusQ.data;
+  const syncRunning = runSync.isPending;
+  const lastSyncAt =
+    syncResult?.ok && syncResult.last_sync_at
+      ? syncResult.last_sync_at
+      : syncStatus?.last_sync_at ?? null;
+  useEffect(() => {
+    if (!syncStatusQ.data) return;
+    setSyncEnabled(syncStatusQ.data.enabled);
+  }, [syncStatusQ.data]);
+
   const saving = updateSettings.isPending;
 
   async function handleSave() {
@@ -92,6 +116,9 @@ export default function SettingsPage() {
     const payload: Record<string, string | boolean> = {
       reminder_time: reminderTime,
       reminder_enabled: reminderEnabled ? "true" : "false",
+      daily_budget_usd: dailyBudget.trim(),
+      openrouter_api_key: syncApiKey.trim(),
+      openrouter_sync_enabled: syncEnabled ? "true" : "false",
     };
     for (const c of CHANNELS) {
       payload[c.key] = channels[c.key] ? "true" : "false";
@@ -119,6 +146,21 @@ export default function SettingsPage() {
       setTimeout(() => setTestResult(null), 3000);
     } finally {
       setTesting(null);
+    }
+  }
+
+  async function handleSyncNow() {
+    // Save the key first so the backend sees it — a sync with an unsaved key
+    // would confusingly fail right after the user typed it.
+    await handleSave();
+    setSyncResult(null);
+    try {
+      const res = await runSync.mutateAsync(7);
+      setSyncResult(res);
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message : "Sync failed — is the backend running?";
+      setSyncResult({ ok: false, error: detail });
     }
   }
 
@@ -167,6 +209,24 @@ export default function SettingsPage() {
               {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
               {saving ? "Saving..." : saved ? "Saved" : "Save"}
             </Button>
+          </div>
+
+          <div className="space-y-1.5 pt-2">
+            <Label>Daily budget (USD)</Label>
+            <Input
+              type="number"
+              step="any"
+              min="0"
+              className="max-w-48"
+              value={dailyBudget}
+              disabled={isLoading}
+              onChange={(e) => setDailyBudget(e.target.value)}
+              placeholder="empty = no budget"
+            />
+            <p className="text-xs text-muted-foreground">
+              When today's derived spend crosses this amount, you get one
+              warning per day through your enabled channels. Leave empty to disable.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -269,6 +329,71 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Changes to channels are saved when you click "Save" in the Daily reminder section above.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            OpenRouter usage sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1.5">
+              <Label>API key</Label>
+              <Input
+                type="password"
+                className="w-72 font-mono text-xs"
+                value={syncApiKey}
+                disabled={isLoading}
+                onChange={(e) => setSyncApiKey(e.target.value)}
+                placeholder="sk-or-v1-…"
+              />
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={syncEnabled}
+                onChange={(e) => setSyncEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm">Enabled</span>
+            </label>
+
+            <Button onClick={handleSave} disabled={saving || isLoading} className="gap-1">
+              {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving..." : saved ? "Saved" : "Save key"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleSyncNow}
+              disabled={!syncStatus?.has_api_key || syncRunning}
+              className="gap-1"
+            >
+              {syncRunning ? "Syncing…" : "Sync now (7d)"}
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {lastSyncAt
+              ? `Last sync: ${new Date(lastSyncAt).toLocaleString()}`
+              : "Never synced."}{" "}
+            Imported entries are marked "auto-imported" — re-syncs skip what was
+            already imported. The key is stored locally like every other setting.
+          </p>
+
+          {syncResult && (
+            <p className={cn("text-sm", syncResult.ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
+              {syncResult.ok
+                ? `Imported ${syncResult.created} entr${syncResult.created === 1 ? "y" : "ies"} (${syncResult.skipped_existing} already present${syncResult.errors ? `, ${syncResult.errors} unusable` : ""}).`
+                : syncResult.error}
+            </p>
+          )}
+
         </CardContent>
       </Card>
 
