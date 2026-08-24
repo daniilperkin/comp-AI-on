@@ -7,6 +7,9 @@ A minimalist developer log and dashboard for tracking daily AI model consumption
 - **Quality-focused logging** — score every AI interaction 1–10 with outcome, category, tokens, latency
 - **Analytics dashboard** — daily timeline (7/30/90-day range control), model leaderboard, quality×category matrix
 - **Spend tracking** — set per-model token prices ($/MTok); costs derive automatically from logged tokens, or enter explicit costs. Dashboard shows 30-day and all-time spend
+- **OpenRouter usage sync** — pull real API activity into the log automatically; imported entries are marked "auto-imported" and deduped across re-syncs (Settings → OpenRouter usage sync)
+- **Daily budget** — optional USD budget; one warning per day through your enabled notification channels when today's spend crosses it
+- **Exports** — CSV/JSON with date-range + model/category filters and derived cost; monthly per-model summary via `/api/stats/monthly`
 - **Recommender & compare views** — "best tool for this task" and side-by-side comparison
 
 ## Stack

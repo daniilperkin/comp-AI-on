@@ -6,4 +6,4 @@
 #   to prevent notification failures from crashing the app.
 # Ignore DTZ003 because this is a local-only app that uses UTC consistently
 #   without timezone-aware datetimes by design.
-ignore = ["E711", "E712", "B008", "BLE001", "DTZ003"]
+ignore = ["E711", "E712", "B008", "BLE001", "DTZ003", "DTZ004", "DTZ007", "DTZ011"]

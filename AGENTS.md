@@ -49,6 +49,9 @@ comp[AI]on/
 │   ├── main.py                # FastAPI app entry, lifespan, router registration, static mount
 │   ├── db.py                  # Engine, session dependency, init_db()
 │   ├── config.py              # Configuration and settings
+│   ├── costing.py             # Cost derivation (explicit > token-derived > unknown)
+│   ├── budget.py              # Daily budget check (once-per-day warning)
+│   ├── openrouter_sync.py     # OpenRouter usage sync (fetch, dedupe, map)
 │   ├── models.py              # All SQLModel tables + create/update schemas
 │   ├── seed.py                # Default seed data (models, categories, settings)
 │   ├── notify.py              # Notification handlers (toast, browser, webhooks)
@@ -59,12 +62,16 @@ comp[AI]on/
 │   │   └── versions/
 │   │       ├── 0001_baseline.py
 │   │       ├── 0002_unique_names.py
-│   │       └── 0004_model_pricing.py
-│   ├── tests/                 # pytest test suite (67 tests)
+│   │       ├── 0004_model_pricing.py
+│   │       └── 0005_logentry_external_id.py
+│   ├── tests/                 # pytest test suite (107 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_categories.py
+│   │   ├── test_costing.py
+│   │   ├── test_export_monthly.py
 │   │   ├── test_logs.py
 │   │   ├── test_models.py
+│   │   ├── test_openrouter_sync.py
 │   │   ├── test_recommender.py
 │   │   ├── test_scheduler.py
 │   │   ├── test_settings.py
@@ -74,8 +81,9 @@ comp[AI]on/
 │       ├── logs.py            # Log entry CRUD + CSV/JSON export
 │       ├── models.py          # Model CRUD
 │       ├── categories.py      # Category CRUD
-│       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, spend, matrix)
+│       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, spend, monthly, matrix)
 │       ├── settings.py        # Settings GET/PUT
+│       ├── sync.py            # OpenRouter usage sync endpoints (status, run)
 │       ├── notifications.py   # Notification endpoints (list, test, mark-shown, reschedule)
 │       ├── recommend.py       # Interactive recommender endpoint
 │       └── compare.py         # Side-by-side model comparison
@@ -399,10 +407,10 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 67 tests
+### Backend (pytest) — 107 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
-- Covers: logs CRUD, stats aggregation (incl. spend analytics), cost derivation, settings, scheduler, recommender, categories, models
+- Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models
 
 ### Frontend (vitest) — 17 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
