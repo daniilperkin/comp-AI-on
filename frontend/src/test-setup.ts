@@ -22,3 +22,28 @@ if (!window.matchMedia) {
 afterEach(() => {
   cleanup();
 });
+
+// jsdom has neither ResizeObserver nor scrollIntoView, and both are used by
+// libraries that only need them to exist (cmdk scrolls the highlighted row into
+// view, Radix observes size changes). Without these stubs any test that opens
+// the command palette throws before it can assert anything.
+if (!("ResizeObserver" in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
+// jsdom implements no pointer capture, and sonner calls setPointerCapture on
+// pointerdown. Without these stubs any test that renders a toast records an
+// unhandled error, which vitest reports and CI fails on.
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.hasPointerCapture = () => false;
+}

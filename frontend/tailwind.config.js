@@ -6,6 +6,17 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
+        // JetBrains Mono arrives via @fontsource-variable (imported in
+        // main.tsx), so the numerals match the "instrument panel" reading of
+        // the UI and never fall back to a random system mono.
+        mono: [
+          "JetBrains Mono Variable",
+          "JetBrains Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
