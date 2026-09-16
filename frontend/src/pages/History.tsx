@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LogTable } from "@/components/LogTable";
 import { Select } from "@/components/ui/select";
+import { LogTableSkeleton } from "@/components/ui/skeleton";
 import { buttonVariants } from "@/components/ui/button";
 import { QueryError } from "@/components/QueryError";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,25 @@ import {
 export default function HistoryPage() {
   const { data: modelsData } = useModels();
   const { data: categoriesData } = useCategories();
-  const [modelFilter, setModelFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+
+  // Filters live in the URL so a view can be bookmarked, shared or reloaded
+  // without losing the selection. react-router's own searchParams is enough
+  // here — nuqs would add an adapter for the same three lines.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modelFilter = searchParams.get("model") ?? "";
+  const categoryFilter = searchParams.get("category") ?? "";
+
+  function setFilter(key: "model" | "category", value: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const models = modelsData ?? [];
   const categories = categoriesData ?? [];
@@ -51,10 +68,15 @@ export default function HistoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">History</h1>
-          <p className="text-sm text-muted-foreground">All log entries. Click any row to edit.</p>
+          <p className="text-sm text-muted-foreground">
+            All log entries. Click any row to edit.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Link to="/log" className={cn(buttonVariants({ variant: "default" }), "gap-1")}>
+          <Link
+            to="/log"
+            className={cn(buttonVariants({ variant: "default" }), "gap-1")}
+          >
             <Plus className="h-4 w-4" /> New entry
           </Link>
           <a
@@ -76,7 +98,10 @@ export default function HistoryPage() {
 
       <div className="flex flex-wrap gap-3">
         <div className="min-w-[180px]">
-          <Select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
+          <Select
+            value={modelFilter}
+            onChange={(e) => setFilter("model", e.target.value)}
+          >
             <option value="">All models</option>
             {models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -86,7 +111,10 @@ export default function HistoryPage() {
           </Select>
         </div>
         <div className="min-w-[180px]">
-          <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <Select
+            value={categoryFilter}
+            onChange={(e) => setFilter("category", e.target.value)}
+          >
             <option value="">All categories</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -98,12 +126,15 @@ export default function HistoryPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading…</p>
+        <LogTableSkeleton rows={8} />
       ) : isError ? (
         <QueryError error={error} onRetry={() => void refetch()} />
       ) : (
         <>
-          <LogTable entries={entries} emptyHint="No entries match these filters." />
+          <LogTable
+            entries={entries}
+            emptyHint="No entries match these filters."
+          />
           <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
             <span>
               {total === 0
@@ -114,7 +145,10 @@ export default function HistoryPage() {
               <span className="flex items-center gap-2">
                 <button
                   type="button"
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "gap-1",
+                  )}
                   onClick={prevPage}
                   disabled={page === 0}
                 >
@@ -125,7 +159,10 @@ export default function HistoryPage() {
                 </span>
                 <button
                   type="button"
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "gap-1",
+                  )}
                   onClick={nextPage}
                   disabled={page >= pageCount - 1}
                 >

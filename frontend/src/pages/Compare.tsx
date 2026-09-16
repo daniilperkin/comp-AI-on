@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { GitCompare } from "lucide-react";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCompare, useModels } from "@/lib/queries";
@@ -13,7 +14,7 @@ export default function Compare() {
 
   function toggle(id: number) {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -80,43 +81,55 @@ export default function Compare() {
       ) : error ? (
         <Card>
           <CardContent className="py-8 text-center text-destructive">
-            {error instanceof Error ? error.message : "Failed to load comparison"}
+            {error instanceof Error
+              ? error.message
+              : "Failed to load comparison"}
           </CardContent>
         </Card>
       ) : result ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {result.models.map((stat) => (
-              <Card key={stat.model.id} className="animate-fade-in">
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {stat.model.name}
-                  </p>
-                  <div className="mt-2 space-y-1">
-                    <p className="text-2xl font-bold text-foreground">
-                      {stat.avg_quality != null ? `${stat.avg_quality}/10` : "—"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {stat.entries} entries ·{" "}
-                      {stat.success_rate != null
-                        ? `${Math.round(stat.success_rate * 100)}% solved`
-                        : "no solved"}
-                    </p>
-                    {stat.avg_latency_ms != null && (
-                      <p className="text-xs text-muted-foreground">
-                        {stat.avg_latency_ms}ms avg
+          <Group orientation="horizontal" className="flex gap-3">
+            {result.models.map((stat, index) => (
+              <Fragment key={stat.model.id}>
+                {index > 0 && (
+                  <Separator className="w-2 rounded-full bg-border transition-colors hover:bg-primary/50" />
+                )}
+                <Panel minSize={15} className="min-w-0">
+                  <Card className="h-full animate-fade-in">
+                    <CardContent className="p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {stat.model.name}
                       </p>
-                    )}
-                    {stat.total_cost_usd != null && stat.total_cost_usd > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        ${stat.total_cost_usd.toFixed(2)} total
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-2xl font-bold text-foreground">
+                          {stat.avg_quality != null
+                            ? `${stat.avg_quality}/10`
+                            : "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {stat.entries} entries ·{" "}
+                          {stat.success_rate != null
+                            ? `${Math.round(stat.success_rate * 100)}% solved`
+                            : "no solved"}
+                        </p>
+                        {stat.avg_latency_ms != null && (
+                          <p className="text-xs text-muted-foreground">
+                            {stat.avg_latency_ms}ms avg
+                          </p>
+                        )}
+                        {stat.total_cost_usd != null &&
+                          stat.total_cost_usd > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              ${stat.total_cost_usd.toFixed(2)} total
+                            </p>
+                          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Panel>
+              </Fragment>
             ))}
-          </div>
+          </Group>
 
           <Card className="animate-fade-in">
             <CardHeader>
@@ -127,9 +140,14 @@ export default function Compare() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="px-3 py-2 text-left text-muted-foreground">Category</th>
+                      <th className="px-3 py-2 text-left text-muted-foreground">
+                        Category
+                      </th>
                       {result.models.map((s) => (
-                        <th key={s.model.id} className="px-3 py-2 text-center text-muted-foreground">
+                        <th
+                          key={s.model.id}
+                          className="px-3 py-2 text-center text-muted-foreground"
+                        >
                           {s.model.name}
                         </th>
                       ))}
@@ -137,7 +155,10 @@ export default function Compare() {
                   </thead>
                   <tbody>
                     {getUniqueCategories(result.models).map((cat) => (
-                      <tr key={`${cat.categoryId}-${cat.name}`} className="border-b border-border/50">
+                      <tr
+                        key={`${cat.categoryId}-${cat.name}`}
+                        className="border-b border-border/50"
+                      >
                         <td className="px-3 py-2 font-medium">
                           <span className="inline-flex items-center gap-1.5">
                             {cat.color && (
@@ -151,19 +172,25 @@ export default function Compare() {
                         </td>
                         {result.models.map((s) => {
                           const cell = s.per_category.find(
-                            (c) => c.category_id === cat.categoryId
+                            (c) => c.category_id === cat.categoryId,
                           );
                           return (
-                            <td key={s.model.id} className="px-3 py-2 text-center">
+                            <td
+                              key={s.model.id}
+                              className="px-3 py-2 text-center"
+                            >
                               {cell && cell.avg_quality != null ? (
                                 <span className="font-mono font-medium">
                                   {cell.avg_quality}
                                   <span className="text-xs text-muted-foreground">
-                                    {" "}/10 ({cell.entries})
+                                    {" "}
+                                    /10 ({cell.entries})
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground/30">—</span>
+                                <span className="text-muted-foreground/30">
+                                  —
+                                </span>
                               )}
                             </td>
                           );
@@ -187,7 +214,15 @@ interface UniqueCat {
   color: string | null;
 }
 
-function getUniqueCategories(models: { per_category: { category_id: number; category_name: string; category_color: string | null }[] }[]): UniqueCat[] {
+function getUniqueCategories(
+  models: {
+    per_category: {
+      category_id: number;
+      category_name: string;
+      category_color: string | null;
+    }[];
+  }[],
+): UniqueCat[] {
   const seen = new Map<number, UniqueCat>();
   for (const m of models) {
     for (const c of m.per_category) {
