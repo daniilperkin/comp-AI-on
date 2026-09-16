@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { useCategories, useModels } from "@/lib/queries";
 import type { LogEntry } from "@/types";
@@ -9,6 +18,46 @@ import type { LogEntry } from "@/types";
 interface LogTableProps {
   entries: LogEntry[];
   emptyHint?: string;
+}
+
+type SortKey = "date" | "model" | "score";
+
+interface SortState {
+  key: SortKey;
+  dir: "asc" | "desc";
+}
+
+/**
+ * Column header button. Defined at module scope on purpose: a component
+ * declared inside LogTable would be a new type on every render, which React
+ * treats as a different component and remounts (and the lint rules reject).
+ */
+function SortLabel({
+  column,
+  label,
+  sort,
+  onToggle,
+}: {
+  column: SortKey;
+  label: string;
+  sort: SortState;
+  onToggle: (key: SortKey) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(column)}
+      className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+    >
+      {label}
+      {sort.key === column &&
+        (sort.dir === "asc" ? (
+          <ArrowUp className="h-3 w-3" aria-hidden="true" />
+        ) : (
+          <ArrowDown className="h-3 w-3" aria-hidden="true" />
+        ))}
+    </button>
+  );
 }
 
 export function LogTable({ entries, emptyHint }: LogTableProps) {
@@ -30,12 +79,15 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
     return e.model_name_text ?? "—";
   }
 
-  function categoryLabel(e: LogEntry): { name: string; color: string | null } | null {
+  function categoryLabel(
+    e: LogEntry,
+  ): { name: string; color: string | null } | null {
     if (e.category_id) {
       const c = categoryMap.get(e.category_id);
       if (c) return { name: c.name, color: c.color };
     }
-    if (e.category_name_text) return { name: e.category_name_text, color: null };
+    if (e.category_name_text)
+      return { name: e.category_name_text, color: null };
     return null;
   }
 
@@ -44,6 +96,58 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
     if (o === "partial") return "warning" as const;
     if (o === "failed") return "destructive" as const;
     return "outline" as const;
+  }
+
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "date",
+    dir: "desc",
+  });
+
+  // Sorting is client-side over the rows this page already has. The API hands
+  // back a page at a time, so a server-side ORDER BY would re-sort the whole
+  // table out from under the pagination — worse than sorting what is visible.
+  //
+  // No useMemo here on purpose: the React Compiler already memoizes this
+  // component, and a hand-written memo it cannot analyse is an error in this
+  // repo's lint config.
+  const nameOf = (e: LogEntry) =>
+    (e.model_id ? modelMap.get(e.model_id) : e.model_name_text) ?? "—";
+  const dir = sort.dir === "asc" ? 1 : -1;
+
+  const sorted = [...entries].sort((a, b) => {
+    if (sort.key === "date") {
+      if (a.created_at === b.created_at) return 0;
+      return (a.created_at < b.created_at ? -1 : 1) * dir;
+    }
+    if (sort.key === "model") return nameOf(a).localeCompare(nameOf(b)) * dir;
+
+    // Rows with no score stay at the bottom in both directions: a score of
+    // "—" is missing data, not a low score.
+    const av = a.quality_score;
+    const bv = b.quality_score;
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return (av - bv) * dir;
+  });
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: key === "date" ? "desc" : "asc" },
+    );
+  }
+
+  function sortHeaderProps(key: SortKey) {
+    return {
+      "aria-sort":
+        sort.key === key
+          ? sort.dir === "asc"
+            ? ("ascending" as const)
+            : ("descending" as const)
+          : ("none" as const),
+    };
   }
 
   if (entries.length === 0) {
@@ -59,16 +163,37 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Model</TableHead>
+            <TableHead {...sortHeaderProps("date")}>
+              <SortLabel
+                column="date"
+                label="Date"
+                sort={sort}
+                onToggle={toggleSort}
+              />
+            </TableHead>
+            <TableHead {...sortHeaderProps("model")}>
+              <SortLabel
+                column="model"
+                label="Model"
+                sort={sort}
+                onToggle={toggleSort}
+              />
+            </TableHead>
             <TableHead>Category</TableHead>
             <TableHead className="max-w-[280px]">Task</TableHead>
-            <TableHead>Score</TableHead>
+            <TableHead {...sortHeaderProps("score")}>
+              <SortLabel
+                column="score"
+                label="Score"
+                sort={sort}
+                onToggle={toggleSort}
+              />
+            </TableHead>
             <TableHead>Outcome</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody ref={animateRows}>
-          {entries.map((e) => {
+          {sorted.map((e) => {
             const cat = categoryLabel(e);
             return (
               <TableRow
@@ -100,14 +225,18 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
                 </TableCell>
                 <TableCell>
                   {e.quality_score !== null && e.quality_score !== undefined ? (
-                    <span className="font-mono font-medium">{e.quality_score}/10</span>
+                    <span className="font-mono font-medium">
+                      {e.quality_score}/10
+                    </span>
                   ) : (
                     "—"
                   )}
                 </TableCell>
                 <TableCell>
                   {e.outcome ? (
-                    <Badge variant={outcomeVariant(e.outcome)}>{e.outcome}</Badge>
+                    <Badge variant={outcomeVariant(e.outcome)}>
+                      {e.outcome}
+                    </Badge>
                   ) : (
                     "—"
                   )}

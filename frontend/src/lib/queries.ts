@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type {
   AppNotification,
@@ -102,6 +102,16 @@ export function useLogsPaged(
   params?: Omit<LogsParams, "limit" | "offset">,
 ) {
   const [page, setPage] = useState(0);
+  const modelId = params?.modelId;
+  const categoryId = params?.categoryId;
+
+  // Narrowing the filters used to keep the old offset, so filtering from page 3
+  // could land on an empty page. Reset to the first page whenever the filter set
+  // changes.
+  useEffect(() => {
+    setPage(0);
+  }, [modelId, categoryId]);
+
   const query = useQuery({
     queryKey: queryKeys.logs({ ...params, offset: page * LOGS_PAGE_SIZE }),
     queryFn: async () => {
