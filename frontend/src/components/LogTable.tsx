@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
@@ -12,6 +13,9 @@ interface LogTableProps {
 
 export function LogTable({ entries, emptyHint }: LogTableProps) {
   const navigate = useNavigate();
+  // Rows animate in and out as a new entry lands or a filter changes. Auto
+  // Animate keeps the DOM untouched — it only animates what already moved.
+  const [animateRows] = useAutoAnimate<HTMLTableSectionElement>();
   const { data: modelsData } = useModels();
   const { data: categoriesData } = useCategories();
 
@@ -63,7 +67,7 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
             <TableHead>Outcome</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody ref={animateRows}>
           {entries.map((e) => {
             const cat = categoryLabel(e);
             return (
@@ -72,7 +76,7 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
                 className="cursor-pointer"
                 onClick={() => navigate(`/log/${e.id}`)}
               >
-                <TableCell className="whitespace-nowrap text-muted-foreground">
+                <TableCell className="whitespace-nowrap font-mono text-muted-foreground tabular-nums">
                   {formatDate(e.created_at)}
                 </TableCell>
                 <TableCell className="font-medium">{modelName(e)}</TableCell>

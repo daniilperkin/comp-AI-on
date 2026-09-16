@@ -1,8 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { LayoutDashboard, PlusCircle, History, Cpu, Settings, BarChart3, Sun, Moon, Sparkles, GitCompare, Menu, X } from "lucide-react";
+import { Command, Menu, Moon, Sun, X } from "lucide-react";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { APP_NAV } from "@/lib/navigation";
+import { CommandPalette, OPEN_PALETTE_EVENT } from "@/components/CommandPalette";
+import { CaptureProvider } from "@/components/QuickCapture";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationOverlay } from "@/components/NotificationOverlay";
 
@@ -16,16 +20,7 @@ const Recommender = lazy(() => import("@/pages/Recommender"));
 const Compare = lazy(() => import("@/pages/Compare"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/log", label: "New Log", icon: PlusCircle },
-  { to: "/history", label: "History", icon: History },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/recommender", label: "Recommender", icon: Sparkles },
-  { to: "/compare", label: "Compare", icon: GitCompare },
-  { to: "/models", label: "Models", icon: Cpu },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
+const nav = APP_NAV;
 
 function PageFallback() {
   return (
@@ -66,6 +61,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       <div className="border-t border-border p-3">
         <button
+          onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+          className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"
+        >
+          <Command className="h-4 w-4" />
+          Command
+          <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-medium">
+            ⌘K
+          </kbd>
+        </button>
+        <button
           onClick={toggle}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"
         >
@@ -76,6 +81,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
     </>
   );
+}
+
+/**
+ * Sonner's toaster, following the app theme rather than the OS preference so
+ * toasts match the window they appear in.
+ */
+function AppToaster() {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} position="bottom-right" closeButton />;
 }
 
 export default function App() {
@@ -98,7 +112,8 @@ export default function App() {
   }, [drawerOpen]);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <CaptureProvider>
+      <div className="flex min-h-screen bg-background text-foreground">
       {/* Mobile top bar */}
       <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
         <span className="text-base font-bold tracking-tight text-foreground">comp<span className="text-muted-foreground">[AI]</span>on</span>
@@ -151,6 +166,9 @@ export default function App() {
       </main>
 
       <NotificationOverlay />
-    </div>
+      </div>
+      <CommandPalette />
+      <AppToaster />
+    </CaptureProvider>
   );
 }

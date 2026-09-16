@@ -1,15 +1,18 @@
 import { StatCard } from "@/components/StatCard";
+import { ActivityHeatmap } from "@/components/ActivityHeatmap";
 import { QuickAddBar } from "@/components/QuickAddBar";
 import { LogTable } from "@/components/LogTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LogTableSkeleton, StatCardSkeleton } from "@/components/ui/skeleton";
 import { buttonVariants } from "@/components/ui/button";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { cn, formatCost } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { useModels, useStatsOverview, useLogs } from "@/lib/queries";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useStatsOverview();
-  const { data: recent } = useLogs({ limit: 10 });
+  const { data: recent, isLoading: recentLoading } = useLogs({ limit: 10 });
   const { data: models } = useModels();
 
   const recentEntries = recent ?? [];
@@ -25,36 +28,70 @@ export default function Dashboard() {
       <QuickAddBar />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="animate-fade-in" style={{ animationDelay: "0ms" }}>
-          <StatCard
-            label="Total entries"
-            value={stats?.total_entries ?? null}
-            hint={`${stats?.last_7_days ?? 0} in last 7 days`}
-          />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: "80ms" }}>
-          <StatCard
-            label="Avg quality"
-            value={stats?.avg_quality !== null && stats?.avg_quality !== undefined ? `${stats.avg_quality}/10` : null}
-          />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: "160ms" }}>
-          <StatCard
-            label="Success rate"
-            value={stats?.success_rate !== null && stats?.success_rate !== undefined ? `${Math.round(stats.success_rate * 100)}%` : null}
-          />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <StatCard
-            label="Spend (30d)"
-            value={formatCost(stats?.total_cost_30d ?? null)}
-            hint={stats?.total_cost_all_time ? `all time ${formatCost(stats.total_cost_all_time)}` : undefined}
-          />
-        </div>
-        <div className="animate-fade-in" style={{ animationDelay: "240ms" }}>
-          <StatCard label="Active models" value={activeModels.filter((m) => m.is_active).length} />
-        </div>
+        {statsLoading ? (
+          <StatCardSkeleton count={5} />
+        ) : (
+          <>
+            <div className="animate-fade-in" style={{ animationDelay: "0ms" }}>
+              <StatCard
+                label="Total entries"
+                value={<AnimatedNumber value={stats?.total_entries ?? 0} />}
+                hint={`${stats?.last_7_days ?? 0} in last 7 days`}
+              />
+            </div>
+            <div className="animate-fade-in" style={{ animationDelay: "80ms" }}>
+              <StatCard
+                label="Avg quality"
+                value={
+                  stats?.avg_quality !== null && stats?.avg_quality !== undefined ? (
+                    <AnimatedNumber
+                      value={stats.avg_quality}
+                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                    />
+                  ) : (
+                    "—"
+                  )
+                }
+                hint="out of 10"
+              />
+            </div>
+            <div className="animate-fade-in" style={{ animationDelay: "160ms" }}>
+              <StatCard
+                label="Success rate"
+                value={
+                  stats?.success_rate !== null && stats?.success_rate !== undefined ? (
+                    <AnimatedNumber
+                      value={stats.success_rate}
+                      format={{ style: "percent", maximumFractionDigits: 0 }}
+                    />
+                  ) : (
+                    "—"
+                  )
+                }
+              />
+            </div>
+            <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+              <StatCard
+                label="Spend (30d)"
+                value={formatCost(stats?.total_cost_30d ?? null)}
+                hint={
+                  stats?.total_cost_all_time
+                    ? `all time ${formatCost(stats.total_cost_all_time)}`
+                    : undefined
+                }
+              />
+            </div>
+            <div className="animate-fade-in" style={{ animationDelay: "240ms" }}>
+              <StatCard
+                label="Active models"
+                value={<AnimatedNumber value={activeModels.filter((m) => m.is_active).length} />}
+              />
+            </div>
+          </>
+        )}
       </div>
+
+      <ActivityHeatmap />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="animate-fade-in lg:col-span-2" style={{ animationDelay: "320ms" }}>
@@ -68,10 +105,14 @@ export default function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <LogTable
-              entries={recentEntries}
-              emptyHint="No entries yet — add your first log using the bar above."
-            />
+            {recentLoading ? (
+              <LogTableSkeleton rows={5} />
+            ) : (
+              <LogTable
+                entries={recentEntries}
+                emptyHint="No entries yet — add your first log using the bar above."
+              />
+            )}
           </CardContent>
         </Card>
 

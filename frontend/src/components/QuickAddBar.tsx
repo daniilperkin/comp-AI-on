@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
-import { useCreateLog, useModelsCategories } from "@/lib/queries";
+import { useCreateLog, useDeleteLog, useModelsCategories } from "@/lib/queries";
 import type { LogEntryInput, Outcome } from "@/types";
 
 interface QuickAddBarProps {
   onCreated?: () => void;
+  /** Pre-select a model — used when the palette launches capture for one. */
+  initialModelId?: number;
 }
 
-export function QuickAddBar({ onCreated }: QuickAddBarProps) {
+export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
   const navigate = useNavigate();
   const { models, categories } = useModelsCategories();
   const createLog = useCreateLog();
+  const deleteLog = useDeleteLog();
   const [expanded, setExpanded] = useState(false);
-  const [modelId, setModelId] = useState("");
+  const [modelId, setModelId] = useState(initialModelId ? String(initialModelId) : "");
   const [categoryId, setCategoryId] = useState("");
   const [score, setScore] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -41,7 +45,32 @@ export function QuickAddBar({ onCreated }: QuickAddBarProps) {
     if (outcome) payload.outcome = outcome as Outcome;
 
     try {
-      await createLog.mutateAsync(payload);
+      const entry = await createLog.mutateAsync(payload);
+      // The confirmation lives here rather than in the capture dialog so both
+      // entry points — the dashboard bar and the Alt+L dialog — get the same
+      // toast, and the same one-click undo. The row already exists on the
+      // server by now, so undo is a DELETE of the entry we just created.
+      const modelLabel =
+        entry.model_name_text ?? models.find((m) => m.id === entry.model_id)?.name ?? "session";
+      toast.success(`Logged ${modelLabel}`, {
+        // Live testing made the case for a longer window than the 4s default:
+        // this toast's whole purpose is the one-click correction, and four
+        // seconds is not enough time to notice it, read it and reach the
+        // button. Eight seconds keeps the safety net usable.
+        duration: 8000,
+        description:
+          entry.quality_score !== null && entry.quality_score !== undefined
+            ? `score ${entry.quality_score}/10`
+            : undefined,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void deleteLog.mutateAsync(entry.id).catch(() => {
+              toast.error("Could not undo that entry.");
+            });
+          },
+        },
+      });
       onCreated?.();
       setModelId("");
       setCategoryId("");
