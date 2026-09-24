@@ -7,7 +7,7 @@ def test_get_default_settings(client):
     data = resp.json()
     assert data["reminder_enabled"] == "true"
     assert data["reminder_time"] == "18:00"
-    assert data["theme"] == "dark"
+    assert "theme" not in data
     assert data["channel_os_toast"] == "true"
     assert data["channel_browser_overlay"] == "true"
     assert data["seed_version"] == "2"

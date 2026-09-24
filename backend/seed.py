@@ -24,7 +24,6 @@ DEFAULT_CATEGORIES = [
 DEFAULT_SETTINGS = {
     "reminder_enabled": "true",
     "reminder_time": "18:00",
-    "theme": "dark",
     "channel_os_toast": "true",
     "channel_browser_overlay": "true",
 }

@@ -242,7 +242,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 - API calls go through `src/lib/api.ts` — never use `fetch()` directly in components
 - Types mirroring backend models live in `src/types.ts`
 - No comments unless explicitly requested
-- Initial theme is the stored `localStorage` value (`companion-theme`), else the system `prefers-color-scheme`; toggle via the sidebar (persisted to `localStorage` only — the DB `theme` setting is not read by the frontend). `class="dark"` on `<html>` controls the active palette — see `src/lib/theme.tsx`'s `useTheme`.
+- Initial theme is the stored `localStorage` value (`companion-theme`), else the system `prefers-color-scheme`; toggle via the sidebar (persisted to `localStorage` only — no DB `theme` setting is seeded; the API still accepts an optional `theme` key but the frontend never reads it). `class="dark"` on `<html>` controls the active palette — see `src/lib/theme.tsx`'s `useTheme`.
 
 ### CSS / Styling
 - Tailwind utility classes in JSX — no separate CSS files except `index.css`
@@ -268,7 +268,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 - All fields on `log_entries` are optional except `id` and `created_at` — validation requires at least one of: model, category, or task_description
 - **Migrations (Alembic)** manage the schema. On startup `init_db()` runs `alembic upgrade head`. Pre-existing pre-Alembic databases are auto-adopted: stamped to the baseline revision then upgraded. Fresh databases run all migrations from empty.
 - `PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`, `PRAGMA synchronous=NORMAL` are applied per connection (see `backend/db.py`'s SQLAlchemy `connect` event listener) — WAL sidecars (`database.db-wal`, `database.db-shm`) are gitignored.
-- Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `theme` = `"dark"|"light"`, `seed_version` = `"2"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
+- Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `seed_version` = `"2"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
 
 ### Resetting the database
 Delete `backend/database.db` (and the `-wal`/`-shm` sidecars if present) and restart — Alembic recreates all tables and the seed upsert repopulates defaults.
@@ -287,7 +287,7 @@ The migration is applied automatically on next app startup via `init_db()`. **Al
 Defined in `backend/seed.py` using **upsert-by-name** (adds missing defaults, never overwrites or deletes user data):
 - 6 default models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro, Cursor, GitHub Copilot, Llama 3.1)
 - 7 default categories (Coding, Debugging, Refactoring, Writing, Design, Research, Architecture)
-- 5 default settings (reminder_enabled, reminder_time, theme, channel_os_toast, channel_browser_overlay)
+- 4 default settings (reminder_enabled, reminder_time, channel_os_toast, channel_browser_overlay)
 - A `seed_version` setting tracks the seed schema version for future migrations.
 
 ## 8. API Structure
@@ -389,8 +389,6 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 ### Phase 4 (DONE) — Interactive recommender
 - "Best tool for this task" interactive recommender (`Recommender.tsx` + `routers/recommend.py`)
 - Side-by-side model comparison view (`Compare.tsx` + `routers/compare.py`)
-- Script-based tracking automations
-- Optional auth
 
 ## 11. Common Pitfalls & Gotchas
 
