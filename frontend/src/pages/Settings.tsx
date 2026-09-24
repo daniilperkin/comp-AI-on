@@ -82,7 +82,8 @@ export default function SettingsPage() {
     if (settings.reminder_time) setReminderTime(settings.reminder_time);
     setReminderEnabled(settings.reminder_enabled !== "false");
     setDailyBudget(settings.daily_budget_usd ?? "");
-    setSyncApiKey(settings.openrouter_api_key ?? "");
+    // The backend returns a masked key; never echo it into the input.
+    setSyncApiKey("");
     setSyncEnabled(settings.openrouter_sync_enabled !== "false");
     const ch: Record<string, boolean> = {};
     const wh: Record<string, string> = {};
@@ -117,9 +118,9 @@ export default function SettingsPage() {
       reminder_time: reminderTime,
       reminder_enabled: reminderEnabled ? "true" : "false",
       daily_budget_usd: dailyBudget.trim(),
-      openrouter_api_key: syncApiKey.trim(),
       openrouter_sync_enabled: syncEnabled ? "true" : "false",
     };
+    if (syncApiKey.trim()) payload.openrouter_api_key = syncApiKey.trim();
     for (const c of CHANNELS) {
       payload[c.key] = channels[c.key] ? "true" : "false";
       if (c.webhookUrlKey) {
@@ -349,7 +350,8 @@ export default function SettingsPage() {
                 value={syncApiKey}
                 disabled={isLoading}
                 onChange={(e) => setSyncApiKey(e.target.value)}
-                placeholder="sk-or-v1-…"
+                placeholder={settings?.openrouter_api_key || "sk-or-v1-…"}
+                aria-label="OpenRouter API key"
               />
             </div>
 
@@ -376,6 +378,16 @@ export default function SettingsPage() {
             >
               {syncRunning ? "Syncing…" : "Sync now (7d)"}
             </Button>
+
+            {syncStatus?.has_api_key && (
+              <Button
+                variant="ghost"
+                onClick={() => updateSettings.mutate({ clear_openrouter_api_key: true })}
+                disabled={saving}
+              >
+                Remove key
+              </Button>
+            )}
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -383,7 +395,8 @@ export default function SettingsPage() {
               ? `Last sync: ${new Date(lastSyncAt).toLocaleString()}`
               : "Never synced."}{" "}
             Imported entries are marked "auto-imported" — re-syncs skip what was
-            already imported. The key is stored locally like every other setting.
+            already imported. The key is stored server-side and never shown again in full. Activity is
+            aggregated per day and model (last 30 completed UTC days).
           </p>
 
           {syncResult && (
