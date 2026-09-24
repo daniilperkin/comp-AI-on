@@ -63,26 +63,31 @@ def is_configured(session: Session) -> bool:
 def fetch_activity(api_key: str, days_back: int = 7) -> list[dict[str, Any]]:
     """Fetch recent generations from OpenRouter. Raises RuntimeError on
     transport/auth failure with a message safe to show in the UI."""
-    since = datetime.utcnow() - timedelta(days=days_back)
+    # /activity returns the last 30 completed UTC days, one row per
+    # (date, model endpoint); there is no "since" param, so filter locally.
+    cutoff = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     try:
         resp = httpx.get(
             ACTIVITY_URL,
             headers={"Authorization": f"Bearer {api_key}"},
-            params={"since": since.isoformat()},
             timeout=FETCH_TIMEOUT_S,
         )
     except httpx.HTTPError as exc:
-        raise RuntimeError(f"Could not reach OpenRouter: {exc}") from exc
+        # Don't interpolate exc: some httpx errors echo request details.
+        raise RuntimeError("Could not reach OpenRouter.") from exc
     if resp.status_code == 401:
         raise RuntimeError("OpenRouter rejected the API key (401). Check Settings.")
     if resp.status_code != 200:
         raise RuntimeError(f"OpenRouter returned {resp.status_code}.")
     data = resp.json()
     # Tolerate bare-list or {"data": [...]} envelope shapes.
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict) and isinstance(data.get("data"), list):
-        return data["data"]
+    rows = data.get("data") if isinstance(data, dict) else data
+    if isinstance(rows, list):
+        return [
+            r for r in rows
+            if isinstance(r, dict)
+            and (not isinstance(r.get("date"), str) or r["date"][:10] >= cutoff)
+        ]
     raise RuntimeError("Unexpected OpenRouter activity response shape.")
 
 
@@ -91,6 +96,12 @@ def _generation_id(gen: dict[str, Any]) -> str | None:
         v = gen.get(key)
         if isinstance(v, str | int):
             return str(v)
+    # Activity rows are daily aggregates without an id: key them by
+    # date + model endpoint, which is unique per row and stable across syncs.
+    date = gen.get("date")
+    if isinstance(date, str) and date:
+        ep = gen.get("endpoint_id") or gen.get("model_permaslug") or gen.get("model") or ""
+        return f"or-activity:{date[:10]}:{ep}"
     return None
 
 
@@ -132,13 +143,15 @@ def _to_int(v: Any) -> int | None:
 
 
 def _gen_timestamp(gen: dict[str, Any]) -> datetime | None:
-    raw = gen.get("created_at") or gen.get("startTime") or gen.get("created")
+    raw = (
+        gen.get("created_at") or gen.get("startTime") or gen.get("created") or gen.get("date")
+    )
     if isinstance(raw, (int, float)):
         # Epoch seconds vs milliseconds heuristics.
         ts = datetime.utcfromtimestamp(raw / 1000 if raw > 1e11 else raw)
         return ts.replace(tzinfo=None)
     if isinstance(raw, str):
-        for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
+        for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
             try:
                 return datetime.strptime(raw, fmt)
             except ValueError:
@@ -171,10 +184,17 @@ def to_log_entry_create(
         else:
             model_text = model_slug[:200]
 
-    usage = gen.get("token_usage") or gen.get("usage") or {}
-    in_tok = _to_int(usage.get("prompt") if usage else None) or _to_int(gen.get("tokens_prompt"))
-    out_tok = _to_int(usage.get("completion") if usage else None) or _to_int(gen.get("tokens_completion"))
-    cost = _to_float((usage or {}).get("cost") if usage else None) or _to_float(gen.get("cost"))
+    raw_usage = gen.get("token_usage") or gen.get("usage")
+    usage = raw_usage if isinstance(raw_usage, dict) else {}
+    in_tok = _to_int(usage.get("prompt") if usage else None) or _to_int(
+        gen.get("tokens_prompt", gen.get("prompt_tokens"))
+    )
+    out_tok = _to_int(usage.get("completion") if usage else None) or _to_int(
+        gen.get("tokens_completion", gen.get("completion_tokens"))
+    )
+    cost = _to_float((usage or {}).get("cost") if usage else None) or _to_float(
+        gen.get("cost", None if isinstance(raw_usage, dict) else raw_usage)
+    )
 
     if model_id is None and not model_text and in_tok is None and out_tok is None and cost is None:
         return None

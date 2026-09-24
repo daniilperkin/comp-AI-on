@@ -152,3 +152,62 @@ def test_sync_run_without_key_returns_400(client):
 def test_sync_run_rejects_out_of_range_days(client):
     resp = client.post("/api/sync/run", json={"days_back": 400})
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Real /api/v1/activity shape (daily aggregates, no id) — mocked HTTP
+# ---------------------------------------------------------------------------
+
+def _activity_row(date, endpoint="ep-1"):
+    return {
+        "date": date,
+        "model": "openai/gpt-4.1",
+        "model_permaslug": "openai/gpt-4.1-2025-04-14",
+        "endpoint_id": endpoint,
+        "usage": 0.05,
+        "requests": 10,
+        "prompt_tokens": 1500,
+        "completion_tokens": 800,
+    }
+
+
+class _Resp:
+    def __init__(self, payload, status=200):
+        self._p, self.status_code = payload, status
+
+    def json(self):
+        return self._p
+
+
+def test_activity_rows_import_with_tokens_cost_and_dedupe(client, session):
+    from datetime import datetime, timedelta
+
+    _configure(session)
+    day = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    old = (datetime.utcnow() - timedelta(days=20)).strftime("%Y-%m-%d")
+    payload = {"data": [_activity_row(day), _activity_row(old, "ep-2")]}
+    with patch("backend.openrouter_sync.httpx.get", return_value=_Resp(payload)):
+        first = sync_mod.run_sync(session, days_back=7)
+        second = sync_mod.run_sync(session, days_back=7)
+    assert first["created"] == 1  # 20-day-old row filtered out
+    assert second["created"] == 0 and second["skipped_existing"] == 1
+    row = session.exec(__import__("sqlmodel").select(LogEntry)).one()
+    assert (row.input_tokens, row.output_tokens, row.cost_usd) == (1500, 800, 0.05)
+    assert row.created_at.strftime("%Y-%m-%d") == day
+    assert row.external_id == f"or-activity:{day}:ep-1"
+
+
+def test_settings_never_return_api_key_in_full(client, session):
+    secret = "sk-or-v1-supersecret1234"
+    r = client.put("/api/settings", json={"openrouter_api_key": secret,
+                                          "openrouter_sync_enabled": True,
+                                          "daily_budget_usd": "2.5"})
+    assert r.status_code == 200, r.text
+    assert secret not in r.text and r.json()["openrouter_api_key"].endswith("1234")
+    assert secret not in client.get("/api/settings").text
+    # Blank / echoed mask keeps the stored key; explicit clear removes it.
+    client.put("/api/settings", json={"openrouter_api_key": r.json()["openrouter_api_key"]})
+    assert sync_mod.get_setting(session, sync_mod.API_KEY_KEY) == secret
+    client.put("/api/settings", json={"clear_openrouter_api_key": True})
+    session.expire_all()
+    assert sync_mod.get_setting(session, sync_mod.API_KEY_KEY) == ""

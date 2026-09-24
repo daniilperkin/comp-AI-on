@@ -30,6 +30,24 @@ class SettingsUpdate(BaseModel):
     channel_discord: bool | None = None
     telegram_webhook_url: str | None = None
     discord_webhook_url: str | None = None
+    daily_budget_usd: str | None = None
+    # Write-only: blank/None keeps the stored key; use clear_openrouter_api_key.
+    openrouter_api_key: str | None = None
+    clear_openrouter_api_key: bool | None = None
+    openrouter_sync_enabled: bool | None = None
+
+    @field_validator("daily_budget_usd")
+    @classmethod
+    def _validate_budget(cls, v):
+        if v is None or v.strip() == "":
+            return "" if v is not None else None
+        try:
+            f = float(v)
+        except ValueError:
+            raise ValueError("daily_budget_usd must be a number") from None
+        if f < 0:
+            raise ValueError("daily_budget_usd must be >= 0")
+        return v.strip()
 
     @field_validator("reminder_time")
     @classmethod
@@ -55,10 +73,26 @@ class SettingsUpdate(BaseModel):
         return v
 
 
+SECRET_KEYS = {"openrouter_api_key"}
+
+
+def mask_secret(value: str | None) -> str:
+    """Never return a stored secret in full: keep only the last 4 chars."""
+    if not value:
+        return ""
+    return "••••" + value[-4:] if len(value) > 8 else "••••"
+
+
+def _public(rows) -> dict[str, str]:
+    return {
+        r.key: (mask_secret(r.value) if r.key in SECRET_KEYS else r.value)
+        for r in rows
+    }
+
+
 @router.get("")
 def get_settings(session: Session = Depends(get_session)):
-    rows = session.exec(select(Setting)).all()
-    return {row.key: row.value for row in rows}
+    return _public(session.exec(select(Setting)).all())
 
 
 @router.put("")
@@ -84,6 +118,15 @@ def update_settings(payload: SettingsUpdate, session: Session = Depends(get_sess
         coerced["telegram_webhook_url"] = data["telegram_webhook_url"] or ""
     if "discord_webhook_url" in data:
         coerced["discord_webhook_url"] = data["discord_webhook_url"] or ""
+    if "daily_budget_usd" in data:
+        coerced["daily_budget_usd"] = data["daily_budget_usd"] or ""
+    if "openrouter_sync_enabled" in data:
+        coerced["openrouter_sync_enabled"] = _coerce_bool(data["openrouter_sync_enabled"])
+    key = (data.get("openrouter_api_key") or "").strip()
+    if key and not key.startswith("••••"):  # ignore an echoed mask
+        coerced["openrouter_api_key"] = key
+    if data.get("clear_openrouter_api_key"):
+        coerced["openrouter_api_key"] = ""
 
     for key, value in coerced.items():
         existing = session.get(Setting, key)
@@ -97,5 +140,4 @@ def update_settings(payload: SettingsUpdate, session: Session = Depends(get_sess
     if {"reminder_enabled", "reminder_time"} & set(coerced.keys()):
         reschedule()
 
-    rows = session.exec(select(Setting)).all()
-    return {row.key: row.value for row in rows}
+    return _public(session.exec(select(Setting)).all())
