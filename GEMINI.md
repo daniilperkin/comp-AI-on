@@ -22,7 +22,7 @@ class ModelCreate(ModelBase):
 ```
 
 ### PYTHONPATH must be set
-When running uvicorn directly (not via the launcher), `PYTHONPATH` must point to the repo root. Without it, `from backend.models import ...` fails.
+When running uvicorn from outside the repo root, `PYTHONPATH` must point to the repo root (`python -m uvicorn` from the root works without it). Without it, `from backend.models import ...` fails.
 
 ### `comp[AI]on` bracket trap
 The folder name has `[AI]` brackets. In PowerShell, `Set-Location comp[AI]on` matches `compAon` as a wildcard. Use `-LiteralPath` or Python's `pathlib`:
@@ -47,7 +47,7 @@ Frontend uses `@/` path alias for `src/` imports — never use relative paths li
 ## Pattern reference
 
 Backend endpoints follow: `routers/<resource>.py` → `APIRouter(prefix="/api/<resource>")` → register in `main.py`.
-Frontend pages follow: `src/pages/MyPage.tsx` → route in `App.tsx` → nav entry.
+Frontend pages follow: `src/pages/MyPage.tsx` → route in `App.tsx` → nav entry in `src/lib/navigation.ts`.
 
 ## When unsure
 - Read `AGENTS.md` for canonical conventions.

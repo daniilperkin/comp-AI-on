@@ -39,7 +39,7 @@ or
 
 ## Resetting the database
 
-Delete `backend/database.db` and restart — it re-creates and re-seeds on next launch.
+Delete `backend/database.db` (plus `-wal`/`-shm` sidecars) and restart — it re-creates and re-seeds on next launch.
 
 ## Project layout
 

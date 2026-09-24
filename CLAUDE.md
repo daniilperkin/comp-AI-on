@@ -19,7 +19,7 @@
 
 ### Things Claude Should Watch For
 - The folder name `comp[AI]on` has brackets — use `-LiteralPath` with PowerShell cmdlets.
-- `PYTHONPATH` must be set when running uvicorn directly.
+- `PYTHONPATH` must point to the repo root when running uvicorn from elsewhere (not needed for `python -m uvicorn` from the repo root).
 - Frontend uses `@/` path alias for `src/` imports.
 - All API calls go through `src/lib/api.ts` — never use `fetch()` directly in components.
 - The app supports both light and dark themes via a ThemeProvider with system-theme detection and localStorage persistence.

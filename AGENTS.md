@@ -38,6 +38,10 @@ comp[AI]on/
 ├── GEMINI.md                  # Gemini-specific guidance
 ├── README.md                  # User-facing readme
 ├── .gitignore
+├── .env.example               # COMPANION_* env var template
+├── alembic.ini                # Alembic config (script_location = backend/migrations)
+├── pytest.ini
+├── .github/workflows/ci.yml   # CI gate
 ├── start.bat                  # One-click launcher (default)
 ├── start.ps1                  # PowerShell launcher
 │
@@ -64,8 +68,9 @@ comp[AI]on/
 │   │       ├── 0002_unique_names.py
 │   │       ├── 0004_model_pricing.py
 │   │       └── 0005_logentry_external_id.py
-│   ├── tests/                 # pytest test suite (107 tests)
+│   ├── tests/                 # pytest test suite (97 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
+│   │   ├── test_budget.py
 │   │   ├── test_categories.py
 │   │   ├── test_costing.py
 │   │   ├── test_export_monthly.py
@@ -94,6 +99,8 @@ comp[AI]on/
     ├── vite.config.ts         # Dev proxy /api -> localhost:8765
     ├── tsconfig.json          # TypeScript config (strict)
     ├── tsconfig.node.json     # Node-specific TS config (composite)
+    ├── eslint.config.js       # ESLint flat config
+    ├── vitest.config.ts       # Vitest config (jsdom)
     ├── tailwind.config.js     # Tailwind theme + dark mode
     ├── postcss.config.js
     ├── index.html
@@ -108,15 +115,22 @@ comp[AI]on/
         ├── test-setup.ts      # Vitest setup (jsdom, matchers)
         ├── lib/
         │   ├── api.ts         # Fetch wrapper (get/post/patch/put/delete)
-        │   ├── queries.ts     # Shared React Query hooks
+        │   ├── queries.ts     # Shared React Query hooks (incl. useModelsCategories)
+        │   ├── navigation.ts  # APP_NAV sidebar entries
         │   ├── theme.tsx      # ThemeProvider — system-theme detection + localStorage persistence
-        │   └── utils.ts        # cn(), formatDate(), formatDateShort()
+        │   ├── utils.ts       # cn(), formatDate(), formatDateShort(), formatCost()
+        │   └── *.test.ts(x)   # api, theme, utils tests
         ├── components/
-        │   ├── ui/            # shadcn-style primitives (button, input, label, textarea, select, card, badge, table)
+        │   ├── ui/            # shadcn-style primitives (badge, button, card, command, dialog, input, label, select, skeleton, table, textarea)
         │   ├── ErrorBoundary.tsx
+        │   ├── ActivityHeatmap.tsx
+        │   ├── AnimatedNumber.tsx
+        │   ├── CommandPalette.tsx  # cmdk command palette (+ .test.tsx)
+        │   ├── QueryError.tsx
+        │   ├── QuickCapture.tsx
         │   ├── NotificationOverlay.tsx  # In-browser notification polling + display
         │   ├── StatCard.tsx
-        │   ├── QuickAddBar.tsx # Quick-add form + useModelsCategories hook
+        │   ├── QuickAddBar.tsx # Quick-add form (+ .test.tsx)
         │   ├── LogForm.tsx     # Full log entry form (create/edit)
         │   └── LogTable.tsx    # Reusable table for log entries
         └── pages/
@@ -124,7 +138,7 @@ comp[AI]on/
             ├── Log.tsx         # Full log form page (create/edit)
             ├── History.tsx     # Filterable log table
             ├── Models.tsx      # Model CRUD UI
-            ├── Settings.tsx    # Settings (reminder time, theme toggle)
+            ├── Settings.tsx    # Settings (reminder, channels, budget, OpenRouter sync)
             ├── Analytics.tsx   # Analytics charts (timeline, leaderboard, matrix)
             ├── Recommender.tsx # "Best tool for this task" interactive recommender
             ├── Compare.tsx     # Side-by-side model comparison view
@@ -180,6 +194,8 @@ npm run dev
 | `npm run dev` | Start Vite dev server | `frontend/` |
 | `npm run build` | TypeScript check + Vite production build | `frontend/` |
 | `npm run preview` | Preview production build | `frontend/` |
+| `npm run lint` | ESLint | `frontend/` |
+| `npm run test` | Vitest (single run) | `frontend/` |
 | `uvicorn backend.main:app --reload --port 8765` | Start backend dev server | Repo root (with PYTHONPATH set) |
 
 ### Critical: PYTHONPATH
@@ -187,7 +203,7 @@ The backend uses absolute imports like `from backend.models import ...`. You MUS
 ```
 PYTHONPATH=<repo-root>
 ```
-when running uvicorn directly. The launchers handle this automatically via `cmd /c set PYTHONPATH=...`.
+when running uvicorn directly. The launchers don't set it; they `cd` to the repo root and run `python -m uvicorn`, which puts the cwd on `sys.path`.
 
 ## 6. Code Conventions
 
@@ -226,13 +242,13 @@ when running uvicorn directly. The launchers handle this automatically via `cmd 
 - API calls go through `src/lib/api.ts` — never use `fetch()` directly in components
 - Types mirroring backend models live in `src/types.ts`
 - No comments unless explicitly requested
-- Dark mode is the default; light mode is opt-in via the toggle in the sidebar (persisted to the `theme` setting in the DB, mirrored to `localStorage`). `class="dark"` on `<html>` controls the active palette — see `src/lib/theme.ts`'s `useTheme`.
+- Initial theme is the stored `localStorage` value (`companion-theme`), else the system `prefers-color-scheme`; toggle via the sidebar (persisted to `localStorage` only — the DB `theme` setting is not read by the frontend). `class="dark"` on `<html>` controls the active palette — see `src/lib/theme.tsx`'s `useTheme`.
 
 ### CSS / Styling
 - Tailwind utility classes in JSX — no separate CSS files except `index.css`
-- CSS variables for theming defined in `src/index.css` under `:root`
+- CSS variables for theming defined in `src/index.css` under `:root` (light) and `.dark`
 - High-contrast dark palette: background `hsl(0 0% 7%)`, primary `hsl(40 33% 96%)` (warm-gray neutral — see `src/index.css`)
-- Border radius uses `--radius` CSS var (0.5rem)
+- Border radius uses `--radius` CSS var (0.625rem)
 
 ## 7. Database
 
@@ -240,11 +256,11 @@ when running uvicorn directly. The launchers handle this automatically via `cmd 
 `backend/database.db` — single SQLite file, gitignored.
 
 ### Schema (SQLModel tables)
-- **models**: id, name (unique), kind (local/web/agentic), vendor, is_active, created_at
+- **models**: id, name (unique), kind (local/web/agentic), vendor, is_active, input_price_per_mtok, output_price_per_mtok, created_at
 - **categories**: id, name (unique), color, created_at
-- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cost_usd, latency_ms, notes
+- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cost_usd, latency_ms, notes, external_id (OpenRouter dedupe)
 - **settings**: key (PK), value (string)
-- **notifications**: id, created_at, title, body, channel (browser/os_toast/telegram/discord), shown
+- **notifications**: id, created_at, title, body, channel (only `browser` rows are stored), shown
 - **alembic_version**: Alembic's bookkeeping table (single row with the current revision)
 
 ### Key design decisions
@@ -293,6 +309,10 @@ All API routes are prefixed with `/api`.
 | GET | `/api/stats/timeline` | Daily entry timeline (for charts) |
 | GET | `/api/stats/leaderboard` | Model ranking by average quality score |
 | GET | `/api/stats/matrix` | Model-vs-category quality matrix |
+| GET | `/api/stats/spend` | Spend summary (30-day / all-time) |
+| GET | `/api/stats/monthly` | Monthly per-model summary |
+| GET | `/api/sync/status` | OpenRouter sync status |
+| POST | `/api/sync/run` | Run OpenRouter usage sync |
 | GET, PUT | `/api/settings` | Get / update settings |
 | GET | `/api/notifications` | List pending notifications |
 | POST | `/api/notifications/test` | Fire a test notification |
@@ -315,8 +335,8 @@ All API routes are prefixed with `/api`.
 Future flags enabled: `v7_startTransition`, `v7_relativeSplatPath`.
 
 ### Layout
-Sidebar nav (Dashboard, New Log, History, Models, Settings, Analytics) + main content area.
-Dark theme applied via `class="dark"` on `<html>`.
+Sidebar nav (`APP_NAV` in `src/lib/navigation.ts`: Dashboard, New Log, History, Analytics, Recommender, Compare, Models, Settings) + main content area.
+Theme applied via `class="dark"` on `<html>` (see `src/lib/theme.tsx`).
 
 ### API client
 `src/lib/api.ts` exports an `api` object with `get`, `post`, `patch`, `put`, `delete` methods.
@@ -324,13 +344,13 @@ All methods auto-serialize JSON and throw on non-2xx responses with the error de
 
 ### Component patterns
 - **Pages** are default-exported React components in `src/pages/`
-- **UI primitives** in `src/components/ui/` — hand-written shadcn-style (button, input, label, textarea, select, card, badge, table)
-- **Feature components** in `src/components/` — StatCard, QuickAddBar (exports `useModelsCategories` hook), LogForm, LogTable
+- **UI primitives** in `src/components/ui/` — hand-written shadcn-style (badge, button, card, command, dialog, input, label, select, skeleton, table, textarea)
+- **Feature components** in `src/components/` — StatCard, QuickAddBar, QuickCapture, CommandPalette, LogForm, LogTable, ActivityHeatmap, etc. (shared data hooks like `useModelsCategories` live in `src/lib/queries.ts`)
 
 ### Adding a new page
 1. Create `src/pages/MyPage.tsx` with a default export
 2. Add a `<Route path="/my-page" element={<MyPage />} />` in `src/App.tsx`
-3. Add a nav entry in the `nav` array in `src/App.tsx`
+3. Add a nav entry in `APP_NAV` in `src/lib/navigation.ts`
 
 ### Adding a new UI component
 1. Create `src/components/ui/mycomponent.tsx`
@@ -392,7 +412,7 @@ When using `Start-Process -WorkingDirectory`, the brackets break it. Use `cmd /c
 **NEVER** do `class FooCreate(Foo, table=True)` where `Foo` already has `table=True`. This causes a silent SQLAlchemy error. Always use the base-class pattern documented in section 6.
 
 ### PYTHONPATH for backend
-The backend uses absolute imports (`from backend.models import ...`). When running uvicorn directly, you MUST set `PYTHONPATH` to the repo root. The launchers handle this; manual runs do not.
+The backend uses absolute imports (`from backend.models import ...`). When running uvicorn directly, you MUST set `PYTHONPATH` to the repo root. Running `python -m uvicorn` from the repo root also works (as the launchers do).
 
 ### Vite proxy
 In dev mode, Vite proxies `/api/*` to `http://localhost:8765`. The frontend code uses relative paths (`/api/logs`) — never hardcode `localhost:8765` in frontend code.
@@ -407,15 +427,15 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 107 tests
+### Backend (pytest) — 97 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
 - Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models
 
-### Frontend (vitest) — 17 tests
+### Frontend (vitest) — 23 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
 - Run: `npm run test` in `frontend/`
-- Covers: `lib/api.ts`, `lib/utils.ts`, `lib/theme.tsx`
+- Covers: `lib/api.ts`, `lib/utils.ts`, `lib/theme.tsx`, `CommandPalette`, `QuickAddBar`
 
 ### CI gate
 `.github/workflows/ci.yml` runs two jobs:
