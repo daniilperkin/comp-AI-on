@@ -14,7 +14,7 @@ A minimalist developer log and dashboard for tracking daily AI model consumption
 
 ## Stack
 
-- **Frontend**: React (Vite) + Tailwind CSS + shadcn/ui
+- **Frontend**: React (Vite) + Tailwind CSS + hand-written shadcn-style components
 - **Backend**: Python (FastAPI) + SQLModel + SQLite
 - **Database**: single local file at `backend/database.db`
 
@@ -46,6 +46,6 @@ Delete `backend/database.db` (plus `-wal`/`-shm` sidecars) and restart — it re
 ```
 comp[AI]on/
 ├── start.bat / start.ps1     # one-click launcher
-├── frontend/                 # Vite + React + Tailwind + shadcn/ui
+├── frontend/                 # Vite + React + Tailwind + shadcn-style UI
 └── backend/                  # FastAPI + SQLModel + SQLite
 ```

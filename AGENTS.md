@@ -218,7 +218,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 
   class Model(ModelBase, table=True):
       id: Optional[int] = Field(default=None, primary_key=True)
-      created_at: datetime = Field(default_factory=datetime.utcnow)
+      created_at: datetime = Field(default_factory=_utcnow)  # naive UTC, see models.py _utcnow()
 
   class ModelCreate(ModelBase):
       pass

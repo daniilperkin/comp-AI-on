@@ -19,7 +19,7 @@
 
 ```
 frontend/
-├── index.html              # HTML entry, dark class on <html> and <body>
+├── index.html              # HTML entry (no theme class; ThemeProvider adds .dark at runtime)
 ├── package.json
 ├── vite.config.ts          # Vite config + /api proxy to localhost:8765
 ├── tsconfig.json           # Strict mode, @/ path alias
@@ -38,8 +38,9 @@ frontend/
     ├── lib/
     │   ├── api.ts           # Fetch wrapper (get/post/patch/put/delete)
     │   ├── queries.ts       # Shared React Query hooks
+    │   ├── navigation.ts    # APP_NAV sidebar entries
     │   ├── theme.tsx        # ThemeProvider — system detection + persistence
-    │   └── utils.ts         # cn(), formatDate(), formatDateShort()
+    │   └── utils.ts         # cn(), formatDate(), formatDateShort(), formatCost()
     ├── components/
     │   ├── ui/              # shadcn-style primitives
     │   │   ├── button.tsx
@@ -49,6 +50,9 @@ frontend/
     │   │   ├── select.tsx
     │   │   ├── card.tsx
     │   │   ├── badge.tsx
+    │   │   ├── command.tsx
+    │   │   ├── dialog.tsx
+    │   │   ├── skeleton.tsx
     │   │   └── table.tsx
     │   ├── StatCard.tsx
     │   ├── QuickAddBar.tsx   # Quick-add form (consumes useModelsCategories)
@@ -129,14 +133,14 @@ MyComponent.displayName = "MyComponent";
 
 ## Theme / Styling
 
-- **Dark mode default, light mode opt-in** — toggled via sidebar, persisted to DB settings and `localStorage`. `class="dark"` on `<html>` controls active palette.
+- **Follows the system theme by default** (`prefers-color-scheme`); the sidebar toggle overrides it and is persisted to `localStorage` only (`companion-theme`) — there is no DB theme setting. `class="dark"` on `<html>` controls the active palette (`src/lib/theme.tsx`).
 - CSS variables in `src/index.css` under `:root`
 - High-contrast palette (warm-gray neutral, see `src/index.css`):
   - Background (dark): `hsl(0 0% 7%)`
   - Primary (dark): `hsl(40 33% 96%)` — warm off-white
   - Card: `hsl(0 0% 10%)`
   - Border: `255 255 255 / 0.08` (translucent white)
-- Border radius: `--radius: 0.5rem`
+- Border radius: `--radius: 0.625rem`
 - Tailwind config extends colors to use CSS vars: `bg-background`, `text-foreground`, `bg-card`, `text-primary`, etc.
 
 ## Adding a New Page
@@ -157,7 +161,7 @@ MyComponent.displayName = "MyComponent";
    // ...
    <Route path="/my-page" element={<MyPage />} />
    ```
-3. Add nav entry in the `nav` array in `src/App.tsx`:
+3. Add nav entry to `APP_NAV` in `src/lib/navigation.ts`:
    ```tsx
    { to: "/my-page", label: "My Page", icon: SomeIcon },
    ```

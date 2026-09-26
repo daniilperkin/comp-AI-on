@@ -10,7 +10,7 @@
 | Add a new SQLModel table | `models.py` — follow the base-class pattern |
 | Add a new API endpoint | `routers/<resource>.py` + register in `main.py` |
 | Add seed data | `seed.py` → `run_seed()` |
-| Change DB location | `db.py` → `DB_PATH` |
+| Change DB location | `config.py` → `db_path` (env `COMPANION_DB_PATH`); `db.py` only reads it |
 | Add Python dependency | `requirements.txt` + `pip install` in venv |
 
 ## Architecture
@@ -38,7 +38,8 @@ backend/
     ├── notifications.py# Notification endpoints
     ├── recommend.py    # Recommender endpoints
     ├── stats.py        # Stats/analytics endpoints
-    └── settings.py     # Settings GET/PUT
+    ├── settings.py     # Settings GET/PUT
+    └── sync.py         # OpenRouter usage sync endpoints (status, run)
 ```
 
 ## SQLModel Pattern (CRITICAL)
@@ -53,7 +54,7 @@ class ModelBase(SQLModel):
 
 class Model(ModelBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)  # naive UTC, see models.py _utcnow()
 
 class ModelCreate(ModelBase):
     pass
@@ -71,10 +72,11 @@ class ModelCreate(Model, table=True):  # NEVER DO THIS
 
 1. In `models.py`, define `Base`, `Table(table=True)`, `Create`, and `Update` classes following the pattern above.
 2. If seed data is needed, add it to `seed.py` → `run_seed()`.
-3. Create and apply an Alembic migration from repo root:
+3. Create and apply an Alembic migration from repo root (`migrations/env.py` imports `backend.*`, so set `PYTHONPATH`):
    ```powershell
-   python -m alembic revision --autogenerate -m "add new table"
-   python -m alembic upgrade head
+   set PYTHONPATH=<repo-root>
+   backend\.venv\Scripts\python.exe -m alembic revision --autogenerate -m "add new table"
+   backend\.venv\Scripts\python.exe -m alembic upgrade head
    ```
 
 ## Adding a New Router
