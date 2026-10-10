@@ -31,9 +31,13 @@ export interface LogEntry {
   outcome: Outcome | null;
   input_tokens: number | null;
   output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_write_tokens: number | null;
+  reasoning_tokens: number | null;
   cost_usd: number | null;
   latency_ms: number | null;
   notes: string | null;
+  origin: string | null;
 }
 
 export interface LogEntryInput {
@@ -46,6 +50,9 @@ export interface LogEntryInput {
   outcome?: Outcome | null;
   input_tokens?: number | null;
   output_tokens?: number | null;
+  cache_read_tokens?: number | null;
+  cache_write_tokens?: number | null;
+  reasoning_tokens?: number | null;
   cost_usd?: number | null;
   latency_ms?: number | null;
   notes?: string | null;

@@ -3,10 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle } from "lucide-react";
+import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSettings, useUpdateSettings, useRunSync, useSyncStatus } from "@/lib/queries";
-import type { SyncResult } from "@/lib/queries";
+import {
+  useSettings,
+  useUpdateSettings,
+  useRunSync,
+  useSyncStatus,
+  useHermesSyncStatus,
+  useRunHermesSync,
+} from "@/lib/queries";
+import type { HermesSyncResult, SyncResult } from "@/lib/queries";
 import { api } from "@/lib/api";
 
 interface ChannelConfig {
@@ -77,6 +84,12 @@ export default function SettingsPage() {
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | { ok: false; error: string } | null>(null);
 
+  // Hermes usage sync
+  const hermesStatusQ = useHermesSyncStatus();
+  const runHermesSync = useRunHermesSync();
+  const [hermesSyncEnabled, setHermesSyncEnabled] = useState(true);
+  const [hermesResult, setHermesResult] = useState<HermesSyncResult | null>(null);
+
   useEffect(() => {
     if (!settings) return;
     if (settings.reminder_time) setReminderTime(settings.reminder_time);
@@ -85,6 +98,7 @@ export default function SettingsPage() {
     // The backend returns a masked key; never echo it into the input.
     setSyncApiKey("");
     setSyncEnabled(settings.openrouter_sync_enabled !== "false");
+    setHermesSyncEnabled(settings.hermes_sync_enabled !== "false");
     const ch: Record<string, boolean> = {};
     const wh: Record<string, string> = {};
     for (const c of CHANNELS) {
@@ -109,6 +123,17 @@ export default function SettingsPage() {
     setSyncEnabled(syncStatusQ.data.enabled);
   }, [syncStatusQ.data]);
 
+  const hermesStatus = hermesStatusQ.data;
+  const hermesRunning = runHermesSync.isPending;
+  const lastHermesSyncAt =
+    hermesResult?.ok && hermesResult.last_sync_at
+      ? hermesResult.last_sync_at
+      : hermesStatus?.last_sync_at ?? null;
+  useEffect(() => {
+    if (!hermesStatusQ.data) return;
+    setHermesSyncEnabled(hermesStatusQ.data.enabled);
+  }, [hermesStatusQ.data]);
+
   const saving = updateSettings.isPending;
 
   async function handleSave() {
@@ -119,6 +144,7 @@ export default function SettingsPage() {
       reminder_enabled: reminderEnabled ? "true" : "false",
       daily_budget_usd: dailyBudget.trim(),
       openrouter_sync_enabled: syncEnabled ? "true" : "false",
+      hermes_sync_enabled: hermesSyncEnabled ? "true" : "false",
     };
     if (syncApiKey.trim()) payload.openrouter_api_key = syncApiKey.trim();
     for (const c of CHANNELS) {
@@ -162,6 +188,20 @@ export default function SettingsPage() {
       const detail =
         err instanceof Error ? err.message : "Sync failed — is the backend running?";
       setSyncResult({ ok: false, error: detail });
+    }
+  }
+
+  async function handleHermesSyncNow() {
+    // Persist the toggle first so a disabled→enabled flip is respected.
+    await handleSave();
+    setHermesResult(null);
+    try {
+      const res = await runHermesSync.mutateAsync();
+      setHermesResult(res);
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message : "Sync failed — is the backend running?";
+      setHermesResult({ ok: false, created: 0, updated: 0, unchanged: 0, errors: 0, error: detail });
     }
   }
 
@@ -407,6 +447,77 @@ export default function SettingsPage() {
             </p>
           )}
 
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" />
+            Hermes usage sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Imports local Hermes Agent usage from every profile's state.db —
+            one entry per session × model × task, with tokens, cache reads and
+            estimated cost. Runs on app start and every 30 minutes. Imported
+            entries are marked "auto-imported (hermes)" and carry no quality
+            score until you rate them.
+          </p>
+
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={hermesSyncEnabled}
+                onChange={(e) => setHermesSyncEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm">Enabled</span>
+            </label>
+
+            <Button onClick={handleSave} disabled={saving || isLoading} className="gap-1">
+              {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving..." : saved ? "Saved" : "Save"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleHermesSyncNow}
+              disabled={hermesRunning || !hermesStatus?.profiles_found.length}
+              className="gap-1"
+            >
+              {hermesRunning ? "Syncing…" : "Sync now"}
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {hermesStatus
+              ? `${hermesStatus.profiles_found.length} profile${hermesStatus.profiles_found.length === 1 ? "" : "s"} found${
+                  hermesStatus.hermes_home ? ` (${hermesStatus.hermes_home})` : ""
+                }`
+              : "Checking for Hermes profiles…"}{" "}
+            {hermesStatus &&
+              (lastHermesSyncAt
+                ? `· Last sync: ${new Date(lastHermesSyncAt).toLocaleString()}`
+                : "· Never synced.")}
+          </p>
+
+          {hermesResult && (
+            <p
+              className={cn(
+                "text-sm",
+                hermesResult.ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
+              )}
+            >
+              {hermesResult.ok
+                ? `Imported ${hermesResult.created} new, updated ${hermesResult.updated}, ${hermesResult.unchanged} unchanged${
+                    hermesResult.errors ? `, ${hermesResult.errors} unusable` : ""
+                  }.`
+                : hermesResult.error}
+            </p>
+          )}
         </CardContent>
       </Card>
 

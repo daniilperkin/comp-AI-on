@@ -371,3 +371,56 @@ export function useRunSync() {
     },
   });
 }
+
+// ---- Hermes usage sync ----
+
+export interface HermesSyncProfile {
+  name: string;
+  path: string;
+}
+
+export interface HermesSyncStatus {
+  enabled: boolean;
+  hermes_home: string;
+  profiles_found: HermesSyncProfile[];
+  last_sync_at: string | null;
+}
+
+export interface HermesSyncResult {
+  ok: boolean;
+  rows_seen?: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+  last_sync_at?: string;
+  profiles?: Array<{
+    profile: string;
+    rows: number;
+    created: number;
+    updated: number;
+    unchanged: number;
+    error?: string;
+  }>;
+  error?: string;
+}
+
+export function useHermesSyncStatus() {
+  return useQuery({
+    queryKey: ["sync", "hermes", "status"],
+    queryFn: () => api.get<HermesSyncStatus>("/sync/hermes/status"),
+    staleTime: 30_000,
+  });
+}
+
+export function useRunHermesSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<HermesSyncResult>("/sync/hermes/run", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["logs"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["sync"] });
+    },
+  });
+}
