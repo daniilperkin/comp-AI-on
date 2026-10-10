@@ -1,6 +1,6 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
-sqlmodel>=0.0.16
+sqlmodel>=0.0.48
 pydantic-settings>=2.2
 apscheduler>=3.10
 alembic>=1.13

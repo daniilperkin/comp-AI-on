@@ -157,7 +157,7 @@ def _gen_timestamp(gen: dict[str, Any]) -> datetime | None:
             except ValueError:
                 continue
         try:
-            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(raw)
             return dt.replace(tzinfo=None)
         except ValueError:
             return None

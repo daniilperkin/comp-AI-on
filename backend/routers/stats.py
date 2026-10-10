@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 
 def _utcnow_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _load_models(session: Session, model_ids) -> dict[int, Model]:

@@ -1,6 +1,6 @@
 """Tests for export filters and the monthly summary endpoint."""
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from backend.models import LogEntry
 
@@ -88,7 +88,7 @@ def test_monthly_aggregates_by_model(client, session):
     priced = _make_priced_model(client)
     plain = client.post("/api/models", json={"name": "Plain", "kind": "web"}).json()
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     session.add(LogEntry(  # derived: 2M*0.15 + 0.5M*0.60 = 0.60
         model_id=priced["id"], input_tokens=2_000_000, output_tokens=500_000,
         created_at=now,
@@ -115,7 +115,7 @@ def test_monthly_aggregates_by_model(client, session):
 def test_monthly_counts_unknown_cost_entries(client, session):
     model = client.post("/api/models", json={"name": "FreeModel", "kind": "web"}).json()
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     session.add(LogEntry(
         model_id=model["id"],
         input_tokens=999_999, output_tokens=999_999,
