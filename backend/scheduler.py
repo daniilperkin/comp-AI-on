@@ -1,7 +1,9 @@
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from sqlmodel import Session, select
 
 from backend.config import settings
@@ -9,7 +11,12 @@ from backend.db import engine
 from backend.models import LogEntry, Setting
 from backend.notify import dispatch_reminder
 
+logger = logging.getLogger(__name__)
+
 scheduler: BackgroundScheduler | None = None
+
+HERMES_SYNC_INTERVAL_MINUTES = 30
+HERMES_SYNC_JOB_ID = "hermes_sync"
 
 
 def get_setting(session: Session, key: str, default: str = "") -> str:
@@ -29,7 +36,7 @@ def _local_tz():
         from zoneinfo import ZoneInfo
 
         return ZoneInfo(tz_name)
-    return datetime.now(timezone.utc).astimezone().tzinfo
+    return datetime.now(UTC).astimezone().tzinfo
 
 
 def reminder_job():
@@ -40,7 +47,7 @@ def reminder_job():
 
         local_now = datetime.now(_local_tz())
         today_start_local = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
-        today_start_utc = today_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+        today_start_utc = today_start_local.astimezone(UTC).replace(tzinfo=None)
 
         has_entry_today = session.exec(
             select(LogEntry).where(LogEntry.created_at >= today_start_utc).limit(1)
@@ -48,6 +55,18 @@ def reminder_job():
 
         if not has_entry_today:
             dispatch_reminder(session)
+
+
+def hermes_sync_job():
+    from backend.hermes_sync import is_enabled, run_sync
+
+    with Session(engine) as session:
+        if not is_enabled(session):
+            return
+        try:
+            run_sync(session)
+        except Exception:
+            logger.exception("hermes usage sync failed")
 
 
 def parse_time(time_str: str) -> tuple[int, int]:
@@ -62,9 +81,18 @@ def start_scheduler():
     if scheduler is not None:
         return
 
-    scheduler = BackgroundScheduler()
-    scheduler.start()
+    sched = BackgroundScheduler()
+    scheduler = sched
+    sched.start()
     reschedule()
+    # Hermes usage sync: run once at startup, then on a fixed interval.
+    sched.add_job(
+        hermes_sync_job,
+        IntervalTrigger(minutes=HERMES_SYNC_INTERVAL_MINUTES),
+        id=HERMES_SYNC_JOB_ID,
+        replace_existing=True,
+        next_run_time=datetime.now(_local_tz()),
+    )
 
 
 def reschedule():

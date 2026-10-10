@@ -56,6 +56,7 @@ comp[AI]on/
 │   ├── costing.py             # Cost derivation (explicit > token-derived > unknown)
 │   ├── budget.py              # Daily budget check (once-per-day warning)
 │   ├── openrouter_sync.py     # OpenRouter usage sync (fetch, dedupe, map)
+│   ├── hermes_sync.py         # Hermes usage sync (state.db read-only, upsert)
 │   ├── models.py              # All SQLModel tables + create/update schemas
 │   ├── seed.py                # Default seed data (models, categories, settings)
 │   ├── notify.py              # Notification handlers (toast, browser, webhooks)
@@ -67,13 +68,15 @@ comp[AI]on/
 │   │       ├── 0001_baseline.py
 │   │       ├── 0002_unique_names.py
 │   │       ├── 0004_model_pricing.py
-│   │       └── 0005_logentry_external_id.py
-│   ├── tests/                 # pytest test suite (97 tests)
+│   │       ├── 0005_logentry_external_id.py
+│   │       └── 0006_logentry_hermes_fields.py
+│   ├── tests/                 # pytest test suite (113 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_budget.py
 │   │   ├── test_categories.py
 │   │   ├── test_costing.py
 │   │   ├── test_export_monthly.py
+│   │   ├── test_hermes_sync.py
 │   │   ├── test_logs.py
 │   │   ├── test_models.py
 │   │   ├── test_openrouter_sync.py
@@ -88,7 +91,7 @@ comp[AI]on/
 │       ├── categories.py      # Category CRUD
 │       ├── stats.py           # Analytics/stats (overview, timeline, leaderboard, spend, monthly, matrix)
 │       ├── settings.py        # Settings GET/PUT
-│       ├── sync.py            # OpenRouter usage sync endpoints (status, run)
+│       ├── sync.py            # OpenRouter + Hermes usage sync endpoints (status, run)
 │       ├── notifications.py   # Notification endpoints (list, test, mark-shown, reschedule)
 │       ├── recommend.py       # Interactive recommender endpoint
 │       └── compare.py         # Side-by-side model comparison
@@ -258,7 +261,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 ### Schema (SQLModel tables)
 - **models**: id, name (unique), kind (local/web/agentic), vendor, is_active, input_price_per_mtok, output_price_per_mtok, created_at
 - **categories**: id, name (unique), color, created_at
-- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cost_usd, latency_ms, notes, external_id (OpenRouter dedupe)
+- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, latency_ms, notes, external_id (sync dedupe), origin (manual/openrouter/hermes)
 - **settings**: key (PK), value (string)
 - **notifications**: id, created_at, title, body, channel (only `browser` rows are stored), shown
 - **alembic_version**: Alembic's bookkeeping table (single row with the current revision)
@@ -266,9 +269,10 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 ### Key design decisions
 - Log entries have **both** FK fields (`model_id`, `category_id`) AND free-text fallbacks (`model_name_text`, `category_name_text`) — allows quick-add without picking from a list
 - All fields on `log_entries` are optional except `id` and `created_at` — validation requires at least one of: model, category, or task_description
+- The Hermes sync reads every Hermes profile's `state.db` read-only (root: `%LOCALAPPDATA%/hermes`, override `COMPANION_HERMES_HOME`) and imports one entry per session × model × task, upserted by `external_id` (`hermes:<profile>:<session>:<pk-hash>`) — live sessions' usage rows keep accumulating, so re-syncs update existing rows instead of skipping them. Runs on startup + every 30 min (APScheduler job `hermes_sync`) and via `POST /api/sync/hermes/run`. Cost is Hermes' stored `estimated_cost_usd` (OpenRouter headline pricing — overstates post-2026-10-07 pinned deepseek-v4.1-flash rows ~2.2x; opus/glm stored estimates verified accurate; deliberate choice, recalibrate via measured rates if it matters). Daily views overcount multi-day sessions (rows are cumulative) — accepted limitation.
 - **Migrations (Alembic)** manage the schema. On startup `init_db()` runs `alembic upgrade head`. Pre-existing pre-Alembic databases are auto-adopted: stamped to the baseline revision then upgraded. Fresh databases run all migrations from empty.
 - `PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`, `PRAGMA synchronous=NORMAL` are applied per connection (see `backend/db.py`'s SQLAlchemy `connect` event listener) — WAL sidecars (`database.db-wal`, `database.db-shm`) are gitignored.
-- Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `seed_version` = `"2"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
+- Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `seed_version` = `"3"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
 
 ### Resetting the database
 Delete `backend/database.db` (and the `-wal`/`-shm` sidecars if present) and restart — Alembic recreates all tables and the seed upsert repopulates defaults.
@@ -287,7 +291,7 @@ The migration is applied automatically on next app startup via `init_db()`. **Al
 Defined in `backend/seed.py` using **upsert-by-name** (adds missing defaults, never overwrites or deletes user data):
 - 6 default models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro, Cursor, GitHub Copilot, Llama 3.1)
 - 7 default categories (Coding, Debugging, Refactoring, Writing, Design, Research, Architecture)
-- 4 default settings (reminder_enabled, reminder_time, channel_os_toast, channel_browser_overlay)
+- 5 default settings (reminder_enabled, reminder_time, channel_os_toast, channel_browser_overlay, hermes_sync_enabled)
 - A `seed_version` setting tracks the seed schema version for future migrations.
 
 ## 8. API Structure
@@ -313,6 +317,8 @@ All API routes are prefixed with `/api`.
 | GET | `/api/stats/monthly` | Monthly per-model summary |
 | GET | `/api/sync/status` | OpenRouter sync status |
 | POST | `/api/sync/run` | Run OpenRouter usage sync |
+| GET | `/api/sync/hermes/status` | Hermes sync status (profiles found, last sync) |
+| POST | `/api/sync/hermes/run` | Run Hermes usage sync (all profiles) |
 | GET, PUT | `/api/settings` | Get / update settings |
 | GET | `/api/notifications` | List pending notifications |
 | POST | `/api/notifications/test` | Fire a test notification |
@@ -406,8 +412,13 @@ Set-Location -LiteralPath "C:\path\to\comp[AI]on"
 
 When using `Start-Process -WorkingDirectory`, the brackets break it. Use `cmd /c set PYTHONPATH=... && python ...` instead.
 
+PowerShell 5.1 also returns **false from `Test-Path` for relative paths** when the current directory contains brackets — scripts must check `$Root`-qualified absolute paths (see `start.ps1`). If the venv is ever recreated, use the Python 3.12 install (`python -m venv --clear backend\.venv`).
+
 ### SQLModel table inheritance
 **NEVER** do `class FooCreate(Foo, table=True)` where `Foo` already has `table=True`. This causes a silent SQLAlchemy error. Always use the base-class pattern documented in section 6.
+
+### Naive datetimes (sqlmodel 0.0.48+)
+`datetime` annotations map to `UTCDateTime`, which **rejects naive values** at flush time — seeding/inserts crash with "Datetime values must have timezone information". The app stores naive UTC by design, so timestamp fields use pydantic's `NaiveDatetime`; keep the `sqlmodel>=0.0.48` floor in `requirements.txt`.
 
 ### PYTHONPATH for backend
 The backend uses absolute imports (`from backend.models import ...`). When running uvicorn directly, you MUST set `PYTHONPATH` to the repo root. Running `python -m uvicorn` from the repo root also works (as the launchers do).
@@ -425,7 +436,7 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 97 tests
+### Backend (pytest) — 113 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
 - Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models

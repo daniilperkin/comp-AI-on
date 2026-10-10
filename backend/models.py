@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
+from pydantic import NaiveDatetime
 from sqlmodel import Field, SQLModel
 
 
@@ -11,7 +12,7 @@ def _utcnow() -> datetime:
     naive (the scheduler and stats compare against naive UTC), so we strip the
     tzinfo from an aware ``datetime.now(timezone.utc)``.
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class ModelKind(str, Enum):
@@ -44,7 +45,7 @@ class Model(ModelBase, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, max_length=100, unique=True)
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: NaiveDatetime = Field(default_factory=_utcnow)
 
 
 class ModelCreate(ModelBase):
@@ -72,7 +73,7 @@ class Category(CategoryBase, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, max_length=100, unique=True)
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: NaiveDatetime = Field(default_factory=_utcnow)
 
 
 class CategoryCreate(CategoryBase):
@@ -96,6 +97,9 @@ class LogEntryBase(SQLModel):
     outcome: Outcome | None = None
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
+    cache_read_tokens: int | None = Field(default=None, ge=0)
+    cache_write_tokens: int | None = Field(default=None, ge=0)
+    reasoning_tokens: int | None = Field(default=None, ge=0)
     cost_usd: float | None = Field(default=None, ge=0)
     latency_ms: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=4000)
@@ -109,7 +113,9 @@ class LogEntry(LogEntryBase, table=True):
     __tablename__ = "log_entries"
 
     id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=_utcnow, index=True)
+    created_at: NaiveDatetime = Field(default_factory=_utcnow, index=True)
+    # Provenance: "manual" | "openrouter" | "hermes". Set server-side only.
+    origin: str | None = Field(default=None, max_length=32, index=True)
 
 
 class LogEntryCreate(LogEntryBase):
@@ -126,6 +132,9 @@ class LogEntryUpdate(SQLModel):
     outcome: Outcome | None = None
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
+    cache_read_tokens: int | None = Field(default=None, ge=0)
+    cache_write_tokens: int | None = Field(default=None, ge=0)
+    reasoning_tokens: int | None = Field(default=None, ge=0)
     cost_usd: float | None = Field(default=None, ge=0)
     latency_ms: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=4000)
@@ -146,7 +155,7 @@ class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
 
     id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=_utcnow, index=True)
+    created_at: NaiveDatetime = Field(default_factory=_utcnow, index=True)
     title: str = Field(max_length=200)
     body: str = Field(max_length=1000)
     channel: str = Field(default="browser", max_length=32)

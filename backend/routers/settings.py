@@ -35,6 +35,7 @@ class SettingsUpdate(BaseModel):
     openrouter_api_key: str | None = None
     clear_openrouter_api_key: bool | None = None
     openrouter_sync_enabled: bool | None = None
+    hermes_sync_enabled: bool | None = None
 
     @field_validator("daily_budget_usd")
     @classmethod
@@ -122,6 +123,8 @@ def update_settings(payload: SettingsUpdate, session: Session = Depends(get_sess
         coerced["daily_budget_usd"] = data["daily_budget_usd"] or ""
     if "openrouter_sync_enabled" in data:
         coerced["openrouter_sync_enabled"] = _coerce_bool(data["openrouter_sync_enabled"])
+    if "hermes_sync_enabled" in data:
+        coerced["hermes_sync_enabled"] = _coerce_bool(data["hermes_sync_enabled"])
     key = (data.get("openrouter_api_key") or "").strip()
     if key and not key.startswith("••••"):  # ignore an echoed mask
         coerced["openrouter_api_key"] = key

@@ -26,9 +26,10 @@ DEFAULT_SETTINGS = {
     "reminder_time": "18:00",
     "channel_os_toast": "true",
     "channel_browser_overlay": "true",
+    "hermes_sync_enabled": "true",
 }
 
-SEED_VERSION = "2"
+SEED_VERSION = "3"
 
 
 def _upsert_models(session: Session):

@@ -25,6 +25,7 @@ backend/
 ├── notify.py          # Notification handlers
 ├── scheduler.py       # APScheduler configuration
 ├── seed.py            # Default seed data (models, categories, settings)
+├── hermes_sync.py     # Hermes usage sync (read-only state.db → log entries)
 ├── requirements.txt   # Python deps
 ├── ruff.toml          # Ruff linter config
 ├── database.db        # SQLite file (auto-generated, gitignored)
@@ -39,7 +40,7 @@ backend/
     ├── recommend.py    # Recommender endpoints
     ├── stats.py        # Stats/analytics endpoints
     ├── settings.py     # Settings GET/PUT
-    └── sync.py         # OpenRouter usage sync endpoints (status, run)
+    └── sync.py         # OpenRouter + Hermes usage sync endpoints (status, run)
 ```
 
 ## SQLModel Pattern (CRITICAL)

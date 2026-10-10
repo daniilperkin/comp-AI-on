@@ -1,10 +1,11 @@
-"""Usage-sync endpoints: status + manual run."""
+"""Usage-sync endpoints: status + manual run (OpenRouter and Hermes)."""
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from backend import hermes_sync
 from backend import openrouter_sync as sync_mod
 from backend.db import get_session
 
@@ -24,6 +25,20 @@ def _status(session: Session) -> dict[str, Any]:
     }
 
 
+def _hermes_status(session: Session) -> dict[str, Any]:
+    home = hermes_sync.hermes_home()
+    profiles = [
+        {"name": name, "path": str(path)}
+        for name, path in hermes_sync.discover_profile_dbs(home)
+    ]
+    return {
+        "enabled": hermes_sync.is_enabled(session),
+        "hermes_home": str(home),
+        "profiles_found": profiles,
+        "last_sync_at": hermes_sync.get_setting(session, hermes_sync.LAST_SYNC_KEY) or None,
+    }
+
+
 @router.get("/status")
 def sync_status(session: Session = Depends(get_session)):
     return _status(session)
@@ -39,3 +54,16 @@ def run_sync(payload: SyncRunRequest | None = None, session: Session = Depends(g
         # Config/transport problems are user-actionable, not server faults.
         raise HTTPException(400, result.get("error", "sync failed"))
     return {**result, "status": _status(session)}
+
+
+@router.get("/hermes/status")
+def hermes_sync_status(session: Session = Depends(get_session)):
+    return _hermes_status(session)
+
+
+@router.post("/hermes/run")
+def run_hermes_sync(session: Session = Depends(get_session)):
+    result = hermes_sync.run_sync(session)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "sync failed"))
+    return {**result, "status": _hermes_status(session)}

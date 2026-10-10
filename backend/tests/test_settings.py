@@ -10,7 +10,8 @@ def test_get_default_settings(client):
     assert "theme" not in data
     assert data["channel_os_toast"] == "true"
     assert data["channel_browser_overlay"] == "true"
-    assert data["seed_version"] == "2"
+    assert data["seed_version"] == "3"
+    assert data["hermes_sync_enabled"] == "true"
 
 
 def test_update_settings_valid(client):

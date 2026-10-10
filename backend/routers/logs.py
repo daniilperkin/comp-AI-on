@@ -89,6 +89,7 @@ def create_log(payload: LogEntryCreate, session: Session = Depends(get_session))
     if not has_id:
         raise HTTPException(400, "Provide at least a model, category, or task description")
     entry = LogEntry(**data)
+    entry.origin = "manual"
     session.add(entry)
     session.commit()
     session.refresh(entry)
