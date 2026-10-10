@@ -9,7 +9,7 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # --- Backend venv setup ---
-if (-not (Test-Path -LiteralPath "backend\.venv\Scripts\python.exe")) {
+if (-not (Test-Path -LiteralPath "$Root\backend\.venv\Scripts\python.exe")) {
   Write-Host "[setup] Creating Python virtualenv..." -ForegroundColor Yellow
   python -m venv "backend\.venv"
   if (-not $?) { Write-Host "[error] venv creation failed. Make sure Python 3.11+ is installed." -ForegroundColor Red; Read-Host; exit 1 }
@@ -18,7 +18,7 @@ Write-Host "[setup] Installing backend dependencies..." -ForegroundColor Yellow
 & "backend\.venv\Scripts\python.exe" -m pip install -q -r "backend\requirements.txt"
 
 # --- Frontend deps setup ---
-if (-not (Test-Path -LiteralPath "frontend\node_modules")) {
+if (-not (Test-Path -LiteralPath "$Root\frontend\node_modules")) {
   Write-Host "[setup] Installing frontend dependencies..." -ForegroundColor Yellow
   Push-Location "frontend"
   npm install
