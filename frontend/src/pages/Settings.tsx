@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle, Bot } from "lucide-react";
+import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle, Bot, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useSettings,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/queries";
 import type { HermesSyncResult, SyncResult } from "@/lib/queries";
 import { api } from "@/lib/api";
+import { useMotion } from "@/lib/motion";
 
 interface ChannelConfig {
   key: string;
@@ -67,6 +68,7 @@ const CHANNELS: ChannelConfig[] = [
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
   const updateSettings = useUpdateSettings();
+  const { enabled: motionEnabled, setEnabled: setMotionEnabled } = useMotion();
 
   const [reminderTime, setReminderTime] = useState("18:00");
   const [reminderEnabled, setReminderEnabled] = useState(true);
@@ -211,6 +213,63 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Notification and app preferences.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-lg border p-4 transition-colors",
+              motionEnabled ? "border-primary/30 bg-primary/5" : "border-border"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full",
+                  motionEnabled ? "bg-primary/15" : "bg-muted"
+                )}
+              >
+                <Activity
+                  className={cn("h-4 w-4", motionEnabled ? "text-primary" : "text-muted-foreground")}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Motion effects</p>
+                <p className="text-xs text-muted-foreground">
+                  Telemetry sweep: cards rise in, charts plot in, and a scan
+                  sheen follows the pointer across stat cards. Applies instantly
+                  and is stored locally; always off while your system requests
+                  reduced motion.
+                </p>
+              </div>
+            </div>
+
+            <button
+              role="switch"
+              aria-checked={motionEnabled}
+              aria-label="Motion effects"
+              onClick={() => setMotionEnabled(!motionEnabled)}
+              className={cn(
+                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                motionEnabled ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0 h-5 w-5 rounded-full bg-background shadow-sm transition-transform",
+                  motionEnabled ? "translate-x-5" : "translate-x-0.5"
+                )}
+              />
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

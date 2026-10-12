@@ -9,6 +9,7 @@ import { Agentation } from "agentation";
 // only remaining remote font).
 import "@fontsource-variable/jetbrains-mono";
 import App from "./App";
+import { MotionProvider } from "@/lib/motion";
 import { ThemeProvider } from "@/lib/theme";
 import "./index.css";
 
@@ -26,9 +27,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <App />
-        </BrowserRouter>
+        <MotionProvider>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <App />
+          </BrowserRouter>
+        </MotionProvider>
       </ThemeProvider>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
       {import.meta.env.DEV && <Agentation />}
