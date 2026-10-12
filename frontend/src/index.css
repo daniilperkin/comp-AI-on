@@ -162,3 +162,74 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------
+ * Telemetry motion language (opt-in)
+ * ------------------------------------------------------------------
+ * Inert until JS adds `html.motion` (Settings -> Appearance). Reveals
+ * are one-shot, IntersectionObserver-driven, and transform / opacity /
+ * clip-path only; the whole block sits inside a no-preference media
+ * query so reduced-motion users never see any of it. Fill mode is
+ * `backwards`: after an animation ends the element returns to its plain
+ * styles, so no clip or transform residue is left behind.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html.motion [data-motion="rise"]:not(.motion-in),
+  html.motion [data-motion="stagger"]:not(.motion-in),
+  html.motion [data-motion="plot"]:not(.motion-in) {
+    opacity: 0;
+  }
+
+  /* Keyboard safety: never leave focused content invisible. */
+  html.motion [data-motion]:not(.motion-in):focus-within {
+    opacity: 1;
+  }
+
+  html.motion .motion-in[data-motion="rise"] {
+    animation: motion-rise 0.42s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  }
+
+  html.motion .motion-in[data-motion="stagger"] > * {
+    animation: motion-rise 0.42s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(2) { animation-delay: 50ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(3) { animation-delay: 100ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(4) { animation-delay: 150ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(5) { animation-delay: 200ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(6) { animation-delay: 250ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(7) { animation-delay: 300ms; }
+  html.motion .motion-in[data-motion="stagger"] > *:nth-child(8) { animation-delay: 350ms; }
+
+  html.motion .motion-in[data-motion="plot"] {
+    animation: motion-plot 0.62s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  }
+
+  @keyframes motion-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes motion-plot {
+    from { opacity: 0; clip-path: inset(0 100% 0 0); }
+    to { opacity: 1; clip-path: inset(0 0 0 0); }
+  }
+
+  /* Scan sheen across stat cards, pointer devices only. */
+  @media (hover: hover) and (pointer: fine) {
+    html.motion [data-motion="probe"] {
+      position: relative;
+    }
+    html.motion [data-motion="probe"]:hover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(100deg, transparent 40%, hsl(var(--foreground) / 0.05) 50%, transparent 60%);
+      animation: motion-sweep 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    @keyframes motion-sweep {
+      from { transform: translateX(-120%); }
+      to { transform: translateX(120%); }
+    }
+  }
+}

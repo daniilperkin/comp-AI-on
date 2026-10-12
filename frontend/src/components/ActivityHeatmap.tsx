@@ -65,14 +65,14 @@ export function ActivityHeatmap() {
   const activeDays = useMemo(() => calendar.filter((day) => day.count > 0).length, [calendar]);
 
   return (
-    <Card className="animate-fade-in">
+    <Card data-motion="rise" className="animate-fade-in">
       <CardHeader className="flex flex-row items-baseline justify-between">
         <CardTitle>Logging activity</CardTitle>
         <p className="text-xs text-muted-foreground">
           {activeDays} active {activeDays === 1 ? "day" : "days"} · {total} entries
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent data-motion="plot">
         {isLoading ? (
           <Skeleton className="h-[110px] w-full" />
         ) : isError ? (

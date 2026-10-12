@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
         </Card>
       ) : (
         <>
-          <Card className="animate-fade-in">
+          <Card data-motion="rise" className="animate-fade-in">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
@@ -157,7 +157,7 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent data-motion="plot">
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <AreaChart data={timeline} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                   <defs>
@@ -195,14 +195,14 @@ export default function AnalyticsPage() {
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <Card data-motion="rise" className="animate-fade-in" style={{ animationDelay: "100ms" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary" />
                   Model leaderboard
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent data-motion="plot">
                 {leaderboard && leaderboard.length > 0 ? (
                   <ResponsiveContainer width="100%" height={Math.max(CHART_HEIGHT, leaderboard.length * 40)}>
                     <BarChart
@@ -256,14 +256,14 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <Card data-motion="rise" className="animate-fade-in" style={{ animationDelay: "200ms" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Grid3x3 className="h-4 w-4 text-primary" />
                   Model vs category
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent data-motion="plot">
                 {matrix && matrix.cells.length > 0 ? (
                   <MatrixHeatmap data={matrix} />
                 ) : (

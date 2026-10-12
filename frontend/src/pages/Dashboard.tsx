@@ -27,7 +27,7 @@ export default function Dashboard() {
 
       <QuickAddBar />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-motion="stagger" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statsLoading ? (
           <StatCardSkeleton count={5} />
         ) : (
@@ -94,7 +94,7 @@ export default function Dashboard() {
       <ActivityHeatmap />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="animate-fade-in lg:col-span-2" style={{ animationDelay: "320ms" }}>
+        <Card data-motion="rise" className="animate-fade-in lg:col-span-2" style={{ animationDelay: "320ms" }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent entries</CardTitle>
             <Link
@@ -116,7 +116,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="animate-fade-in" style={{ animationDelay: "400ms" }}>
+        <Card data-motion="rise" className="animate-fade-in" style={{ animationDelay: "400ms" }}>
           <CardHeader>
             <CardTitle>Top models by quality</CardTitle>
           </CardHeader>

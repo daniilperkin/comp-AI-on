@@ -215,8 +215,11 @@ controls and badges (`rounded-md`), 6px small elements (`rounded-sm`).
   (`formatCost`, `formatDate`, `formatDateShort`).
 - Compose classes with `cn()`; variants with CVA; primitives with
   `forwardRef` — mirror `src/components/ui/`.
-- Keep motion subtle: fade/slide ≤ 400ms ease-out; honor
-  `prefers-reduced-motion`.
+- Motion is opt-in and lives behind `html.motion` (Settings → Appearance,
+  `companion-motion`): entrance effects use `[data-motion]` + the telemetry
+  rules in `index.css` — transform/opacity/clip-path only,
+  IntersectionObserver-driven, never scroll listeners; entrances stay
+  ≤ 700ms with a 30–80ms stagger.
 
 **Don't**
 
@@ -227,5 +230,7 @@ controls and badges (`rounded-md`), 6px small elements (`rounded-sm`).
   are lint errors here.
 - No `fetch()` outside `src/lib/api.ts`; no hardcoded `localhost:8765`.
 - No new accent hues; destructive red is the only saturated color.
+- No ad-hoc animations: new motion belongs to the opt-in telemetry
+  language, not one-off keyframes or ungated hover movement.
 - Never let dev-only tooling into production: `Agentation` and
   `ReactQueryDevtools` stay behind `import.meta.env.DEV`.
