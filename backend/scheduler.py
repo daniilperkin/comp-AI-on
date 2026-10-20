@@ -17,6 +17,8 @@ scheduler: BackgroundScheduler | None = None
 
 HERMES_SYNC_INTERVAL_MINUTES = 30
 HERMES_SYNC_JOB_ID = "hermes_sync"
+FIREBASE_MIRROR_INTERVAL_MINUTES = 15
+FIREBASE_MIRROR_JOB_ID = "firebase_mirror"
 
 
 def get_setting(session: Session, key: str, default: str = "") -> str:
@@ -69,6 +71,18 @@ def hermes_sync_job():
             logger.exception("hermes usage sync failed")
 
 
+def firebase_mirror_job():
+    from backend.firebase_mirror import is_configured, run_mirror
+
+    if not is_configured():
+        return
+    with Session(engine) as session:
+        try:
+            run_mirror(session)
+        except Exception:
+            logger.exception("firebase mirror failed")
+
+
 def parse_time(time_str: str) -> tuple[int, int]:
     parts = time_str.strip().split(":")
     if len(parts) != 2:
@@ -90,6 +104,14 @@ def start_scheduler():
         hermes_sync_job,
         IntervalTrigger(minutes=HERMES_SYNC_INTERVAL_MINUTES),
         id=HERMES_SYNC_JOB_ID,
+        replace_existing=True,
+        next_run_time=datetime.now(_local_tz()),
+    )
+    # Firebase mirror: no-ops unless credentials are configured.
+    sched.add_job(
+        firebase_mirror_job,
+        IntervalTrigger(minutes=FIREBASE_MIRROR_INTERVAL_MINUTES),
+        id=FIREBASE_MIRROR_JOB_ID,
         replace_existing=True,
         next_run_time=datetime.now(_local_tz()),
     )

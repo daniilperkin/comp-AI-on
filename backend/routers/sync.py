@@ -1,11 +1,11 @@
-"""Usage-sync endpoints: status + manual run (OpenRouter and Hermes)."""
+"""Usage-sync endpoints: status + manual run (OpenRouter, Hermes, Firebase mirror)."""
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from backend import hermes_sync
+from backend import firebase_mirror, hermes_sync
 from backend import openrouter_sync as sync_mod
 from backend.db import get_session
 
@@ -67,3 +67,25 @@ def run_hermes_sync(session: Session = Depends(get_session)):
     if not result.get("ok"):
         raise HTTPException(400, result.get("error", "sync failed"))
     return {**result, "status": _hermes_status(session)}
+
+
+def _firebase_status(session: Session) -> dict[str, Any]:
+    return {
+        "configured": firebase_mirror.is_configured(),
+        "enabled": firebase_mirror.is_enabled(session),
+        "last_mirror_at": hermes_sync.get_setting(session, firebase_mirror.LAST_MIRROR_KEY)
+        or None,
+    }
+
+
+@router.get("/firebase/status")
+def firebase_sync_status(session: Session = Depends(get_session)):
+    return _firebase_status(session)
+
+
+@router.post("/firebase/run")
+def run_firebase_mirror(session: Session = Depends(get_session)):
+    result = firebase_mirror.run_mirror(session)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "mirror failed"))
+    return {**result, "status": _firebase_status(session)}
