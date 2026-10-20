@@ -214,8 +214,6 @@ def _build_notes(profile: str, row: dict[str, Any]) -> str:
         bits.append(f"branch: {branch}")
     if bits:
         lines.append(" · ".join(bits))
-    status = row.get("cost_status") or "unknown"
-    lines.append(f"cost: {status} (${_row_cost(row):.4f})")
     return "\n".join(lines)[:NOTES_MAX]
 
 

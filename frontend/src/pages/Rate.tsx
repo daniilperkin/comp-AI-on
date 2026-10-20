@@ -106,7 +106,7 @@ export default function Rate() {
         <div>
           <h1 className="text-2xl font-bold">Rate entries</h1>
           <p className="text-sm text-muted-foreground">
-            Score what the fleet actually ran — press 1–9, 0 for 10, S to skip.
+            Score what the fleet actually ran — keys 1–9, 0 for 10, S to skip.
           </p>
         </div>
         <Badge variant="secondary">
@@ -182,7 +182,7 @@ export default function Rate() {
                   onClick={() => void rate(score)}
                   aria-label={`Rate ${score} of 10`}
                 >
-                  {score}
+                  {score === 10 ? "10 (0)" : score}
                 </Button>
               ))}
             </div>

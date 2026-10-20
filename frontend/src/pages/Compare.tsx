@@ -1,13 +1,15 @@
 import { Fragment, useState } from "react";
-import { GitCompare } from "lucide-react";
+import { GitCompare, Search } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useCompare, useModels } from "@/lib/queries";
 
 export default function Compare() {
   const { data: models } = useModels();
   const [selected, setSelected] = useState<number[]>([]);
+  const [search, setSearch] = useState("");
 
   const modelIdsParam = selected.join(",");
   const { data: result, isLoading, error } = useCompare(modelIdsParam);
@@ -17,6 +19,20 @@ export default function Compare() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
+
+  // Selected models stay pinned on top so a long list never hides the current
+  // pick, and typing filters on the model name. Plain computation on purpose:
+  // the list is ~50 items and the React Compiler memoizes this itself.
+  const term = search.trim().toLowerCase();
+  const allModels = models ?? [];
+  const visibleModels = [...(term ? allModels.filter((m) => m.name.toLowerCase().includes(term)) : allModels)].sort(
+    (a, b) => {
+      const aSel = selected.includes(a.id) ? 0 : 1;
+      const bSel = selected.includes(b.id) ? 0 : 1;
+      if (aSel !== bSel) return aSel - bSel;
+      return a.name.localeCompare(b.name);
+    }
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -35,13 +51,38 @@ export default function Compare() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {models?.map((m) => {
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter models…"
+                aria-label="Filter models"
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {visibleModels.length} of {models?.length ?? 0}
+            </span>
+            {selected.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setSelected([])}>
+                Clear selection
+              </Button>
+            )}
+          </div>
+          <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto">
+            {visibleModels.map((m) => {
               const isSelected = selected.includes(m.id);
               return (
                 <button
                   key={m.id}
+                  type="button"
                   onClick={() => toggle(m.id)}
+                  aria-pressed={isSelected}
                   className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                     isSelected
                       ? "border-primary bg-primary/10 text-foreground"
@@ -52,6 +93,9 @@ export default function Compare() {
                 </button>
               );
             })}
+            {visibleModels.length === 0 && (
+              <p className="text-sm text-muted-foreground">No models match “{search}”.</p>
+            )}
           </div>
           {selected.length >= 2 && (
             <div className="mt-4">
@@ -110,7 +154,7 @@ export default function Compare() {
                           {stat.entries} entries ·{" "}
                           {stat.success_rate != null
                             ? `${Math.round(stat.success_rate * 100)}% solved`
-                            : "no solved"}
+                            : "no outcomes yet"}
                         </p>
                         {stat.avg_latency_ms != null && (
                           <p className="text-xs text-muted-foreground">

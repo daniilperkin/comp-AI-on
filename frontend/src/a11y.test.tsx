@@ -90,7 +90,11 @@ describe("accessibility", () => {
   });
 
   it("Models list has no unnamed buttons", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(() => Promise.resolve(jsonResponse(MODELS)));
+    vi.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/stats/leaderboard")) return Promise.resolve(jsonResponse([]));
+      return Promise.resolve(jsonResponse(MODELS));
+    });
 
     const { container } = renderWithProviders(<Models />, "/models");
     await screen.findByText("GPT-5");

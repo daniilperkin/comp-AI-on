@@ -1,5 +1,7 @@
 """Tests for log entry CRUD, validation, and export endpoints."""
 
+from datetime import UTC, datetime, timedelta
+
 
 def test_create_log_requires_content(client):
     resp = client.post("/api/logs", json={})
@@ -72,6 +74,43 @@ def test_list_logs_origin_filter(client, session):
     assert resp.status_code == 200
     data = resp.json()
     assert [d["task_description"] for d in data] == ["hermes one"]
+
+
+def test_list_logs_search_filter(client):
+    client.post("/api/logs", json={"task_description": "refactor the parser"})
+    client.post("/api/logs", json={"task_description": "write release notes"})
+
+    resp = client.get("/api/logs?q=parser")
+    assert resp.status_code == 200
+    assert [d["task_description"] for d in resp.json()] == ["refactor the parser"]
+    assert resp.headers["x-total-count"] == "1"
+
+    # No match is an empty page, not an error.
+    assert client.get("/api/logs?q=nothing-matches").json() == []
+
+
+def test_list_logs_search_matches_session_title(client, session):
+    from backend.models import LogEntry
+
+    session.add(LogEntry(task_description="auto-imported", session_title="Fix the parser"))
+    session.add(LogEntry(task_description="auto-imported", session_title="Write docs"))
+    session.commit()
+
+    resp = client.get("/api/logs?q=parser")
+    assert [d["session_title"] for d in resp.json()] == ["Fix the parser"]
+
+
+def test_list_logs_date_range_filter(client):
+    client.post("/api/logs", json={"task_description": "recent"})
+
+    # Everything created "now" matches today, and nothing matches tomorrow.
+    today = datetime.now(UTC).date().isoformat()
+    tomorrow = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+
+    assert client.get(f"/api/logs?date_from={today}").json()
+    assert client.get(f"/api/logs?date_from={tomorrow}").json() == []
+    # Malformed dates are a client error, not a 500.
+    assert client.get("/api/logs?date_from=20-10-2026").status_code == 422
 
 
 def test_get_single_log(client):

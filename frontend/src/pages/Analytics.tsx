@@ -18,6 +18,21 @@ import type { MatrixData, MatrixCell } from "@/types";
 
 const CHART_HEIGHT = 280;
 
+/**
+ * Truncate from the middle, never the front.
+ *
+ * Model ids share long prefixes ("deepseek/deepseek-v4.1-flash-1017"), so a
+ * trailing ellipsis cut the one part that tells them apart. Keeping both ends
+ * means the family and the variant stay readable; the tooltip carries the
+ * full id.
+ */
+function middleEllipsis(value: string, max: number): string {
+  if (!value || value.length <= max) return value;
+  const head = Math.ceil((max - 1) / 2);
+  const tail = Math.floor((max - 1) / 2);
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
 // Read a CSS custom property off :root at render time. Re-computed whenever
 // the theme flips so charts always track the active palette.
 function readCssVar(name: string, fallback: string): string {
@@ -225,7 +240,8 @@ export default function AnalyticsPage() {
                         stroke={chartTheme.axis}
                         fontSize={11}
                         tickLine={false}
-                        width={120}
+                        width={190}
+                        tickFormatter={(value: string) => middleEllipsis(value, 26)}
                       />
                       <Tooltip
                         contentStyle={chartTheme.tooltip}
@@ -257,7 +273,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card data-motion="rise" className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <Card data-motion="rise" className="animate-fade-in lg:col-span-2" style={{ animationDelay: "200ms" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Grid3x3 className="h-4 w-4 text-primary" />

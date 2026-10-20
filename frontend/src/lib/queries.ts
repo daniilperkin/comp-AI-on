@@ -70,6 +70,10 @@ interface LogsParams {
   offset?: number;
   modelId?: number;
   categoryId?: number;
+  q?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  unrated?: boolean;
 }
 
 function buildLogsQuery(params: LogsParams = {}) {
@@ -78,6 +82,10 @@ function buildLogsQuery(params: LogsParams = {}) {
   if (params.offset != null) search.set("offset", String(params.offset));
   if (params.modelId != null) search.set("model_id", String(params.modelId));
   if (params.categoryId != null) search.set("category_id", String(params.categoryId));
+  if (params.q) search.set("q", params.q);
+  if (params.dateFrom) search.set("date_from", params.dateFrom);
+  if (params.dateTo) search.set("date_to", params.dateTo);
+  if (params.unrated) search.set("unrated", "true");
   const qs = search.toString();
   return qs ? `?${qs}` : "";
 }
@@ -100,26 +108,31 @@ export const LOGS_PAGE_SIZE = 50;
  */
 export function useLogsPaged(
   params?: Omit<LogsParams, "limit" | "offset">,
+  pageSize: number = LOGS_PAGE_SIZE,
 ) {
   const [page, setPage] = useState(0);
   const modelId = params?.modelId;
   const categoryId = params?.categoryId;
+  const q = params?.q;
+  const dateFrom = params?.dateFrom;
+  const dateTo = params?.dateTo;
+  const unrated = params?.unrated;
 
   // Narrowing the filters used to keep the old offset, so filtering from page 3
   // could land on an empty page. Reset to the first page whenever the filter set
   // changes.
   useEffect(() => {
     setPage(0);
-  }, [modelId, categoryId]);
+  }, [modelId, categoryId, q, dateFrom, dateTo, unrated, pageSize]);
 
   const query = useQuery({
-    queryKey: queryKeys.logs({ ...params, offset: page * LOGS_PAGE_SIZE }),
+    queryKey: queryKeys.logs({ ...params, offset: page * pageSize }),
     queryFn: async () => {
       const { data, total } = await api.list<LogEntry[]>(
         `/logs${buildLogsQuery({
           ...params,
-          limit: LOGS_PAGE_SIZE,
-          offset: page * LOGS_PAGE_SIZE,
+          limit: pageSize,
+          offset: page * pageSize,
         })}`,
       );
       return { entries: data, total };
@@ -129,7 +142,7 @@ export function useLogsPaged(
   });
 
   const total = query.data?.total ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / LOGS_PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return {
     entries: query.data?.entries ?? [],
@@ -316,7 +329,7 @@ export function useRecommend(categoryId?: number) {
     queryKey: queryKeys.recommend(categoryId),
     queryFn: () =>
       api.get<RecommendationResult>(
-        `/recommend${categoryId != null ? `?category_id=${categoryId}` : ""}`
+        `/recommend?top_n=8${categoryId != null ? `&category_id=${categoryId}` : ""}`
       ),
     staleTime: 60_000,
   });

@@ -7,9 +7,15 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Search } from "lucide-react";
 import { QueryError } from "@/components/QueryError";
-import { useCreateModel, useDeleteModel, useModels, useUpdateModel } from "@/lib/queries";
+import {
+  useCreateModel,
+  useDeleteModel,
+  useModels,
+  useStatsLeaderboard,
+  useUpdateModel,
+} from "@/lib/queries";
 import type { Model, ModelKind } from "@/types";
 
 export default function Models() {
@@ -20,6 +26,7 @@ export default function Models() {
     error,
     refetch,
   } = useModels();
+  const { data: leaderboard } = useStatsLeaderboard();
   const createModel = useCreateModel();
   const updateModel = useUpdateModel();
   const deleteModel = useDeleteModel();
@@ -27,8 +34,32 @@ export default function Models() {
   const [draft, setDraft] = useState<Partial<Model>>({});
   const [creating, setCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Model | null>(null);
+  const [search, setSearch] = useState("");
 
   const models = modelsData ?? [];
+
+  // Entries and average score live on the leaderboard endpoint; joining by id
+  // keeps this page to two requests instead of one per model.
+  const statsById = new Map(
+    (leaderboard ?? [])
+      .filter((row) => row.model)
+      .map((row) => [
+        row.model.id,
+        { entries: row.entries, avgQuality: row.avg_quality },
+      ])
+  );
+
+  const term = search.trim().toLowerCase();
+  const visibleModels = (term
+    ? models.filter(
+        (m) =>
+          m.name.toLowerCase().includes(term) ||
+          (m.vendor ?? "").toLowerCase().includes(term)
+      )
+    : models
+  )
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   async function save() {
     if (!draft.name?.trim()) return;
@@ -100,7 +131,9 @@ export default function Models() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Models</h1>
-          <p className="text-sm text-muted-foreground">Manage the models you track.</p>
+          <p className="text-sm text-muted-foreground">
+            {models.length} models · {models.filter((m) => m.is_active).length} active
+          </p>
         </div>
         <Button onClick={startCreate} className="gap-1">
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -108,13 +141,17 @@ export default function Models() {
         </Button>
       </div>
 
-      {creating && (
+      {(creating || editing !== null) && (
         <Card>
           <CardHeader>
-            <CardTitle>New model</CardTitle>
+            <CardTitle>{editing ? "Edit model" : "New model"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ModelFields idPrefix="new-model" draft={draft} setDraft={setDraft} />
+            <ModelFields
+              idPrefix={editing ? `edit-model-${editing}` : "new-model"}
+              draft={draft}
+              setDraft={setDraft}
+            />
             <div className="flex gap-2">
               <Button onClick={save} className="gap-1">
                 <Check className="h-4 w-4" aria-hidden="true" /> Save
@@ -127,67 +164,98 @@ export default function Models() {
         </Card>
       )}
 
+      <div className="relative max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search models…"
+          aria-label="Search models"
+          className="h-9 pl-8"
+        />
+      </div>
+
       {isError ? (
         <QueryError error={error} onRetry={() => void refetch()} />
       ) : isLoading ? (
         <p className="text-muted-foreground">Loading models…</p>
       ) : (
-        <div className="space-y-3">
-          {models.map((m) =>
-            editing === m.id ? (
-              <Card key={m.id}>
-                <CardContent className="space-y-4 pt-4">
-                  <ModelFields
-                    idPrefix={`edit-model-${m.id}`}
-                    draft={draft}
-                    setDraft={setDraft}
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={save} className="gap-1">
-                      <Check className="h-4 w-4" aria-hidden="true" /> Save
-                    </Button>
-                    <Button variant="outline" onClick={cancel} className="gap-1">
-                      <X className="h-4 w-4" aria-hidden="true" /> Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card key={m.id}>
-                <CardContent className="flex items-center justify-between pt-4">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="font-medium">{m.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {m.vendor ? `${m.vendor} · ` : ""}
-                        {m.kind}
-                      </p>
-                    </div>
-                    {!m.is_active && <Badge variant="outline">inactive</Badge>}
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => startEdit(m)}
-                      aria-label={`Edit ${m.name}`}
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPendingDelete(m)}
-                      aria-label={`Delete ${m.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th scope="col" className="px-4 py-2 font-medium">Name</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Vendor</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Kind</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Status</th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">Entries</th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">Avg score</th>
+                    <th scope="col" className="px-4 py-2 text-right font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleModels.map((m) => {
+                    const stats = statsById.get(m.id);
+                    return (
+                      <tr key={m.id} className="border-b border-border/60 last:border-0">
+                        <td className="px-4 py-2 font-medium">{m.name}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{m.vendor || "—"}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{m.kind}</td>
+                        <td className="px-4 py-2">
+                          {m.is_active ? (
+                            <Badge variant="outline">active</Badge>
+                          ) : (
+                            <Badge variant="outline">inactive</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                          {stats?.entries ?? 0}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {stats?.avgQuality != null ? `${stats.avgQuality}/10` : "—"}
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => startEdit(m)}
+                              aria-label={`Edit ${m.name}`}
+                            >
+                              <Pencil className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setPendingDelete(m)}
+                              aria-label={`Delete ${m.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {visibleModels.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                        {term ? `No models match “${search}”.` : "No models yet."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <ConfirmDialog

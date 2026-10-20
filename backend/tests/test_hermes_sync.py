@@ -129,7 +129,9 @@ def test_run_sync_maps_usage_to_entries(session, tmp_path):
     assert entry.external_id.startswith("hermes:default:s1:")
     assert entry.created_at == datetime.fromtimestamp(1500, tz=UTC).replace(tzinfo=None)
     assert "Fix the bug" in entry.notes
-    assert "estimated" in entry.notes
+    # The cost lives in its own column; notes must not repeat it (the Rate card
+    # showed the same number twice because of that).
+    assert "cost:" not in entry.notes
     assert result["profiles"][0]["profile"] == "default"
 
 
@@ -145,7 +147,7 @@ def test_run_sync_prefers_actual_cost(session, tmp_path):
     hermes_sync.run_sync(session, home=tmp_path)
     entry = session.exec(select(LogEntry)).one()
     assert entry.cost_usd == 0.5
-    assert "actual" in entry.notes
+    assert "cost:" not in entry.notes
 
 
 def test_run_sync_upserts_mutated_rows(session, tmp_path):

@@ -27,7 +27,7 @@ export default function Dashboard() {
 
       <QuickAddBar />
 
-      <div data-motion="stagger" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-motion="stagger" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {statsLoading ? (
           <StatCardSkeleton count={5} />
         ) : (

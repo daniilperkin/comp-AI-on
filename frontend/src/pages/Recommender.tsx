@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Sparkles, Trophy, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -45,7 +46,7 @@ export default function Recommender() {
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
-              <option value="">All categories (global)</option>
+              <option value="">All categories (global ranking)</option>
               {categories?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -61,8 +62,8 @@ export default function Recommender() {
       ) : isError ? (
         <QueryError error={error} onRetry={() => void refetch()} />
       ) : result && result.recommendations.length > 0 ? (
-        <>
-          <Card className="animate-fade-in">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="animate-fade-in lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-primary" />
@@ -79,12 +80,8 @@ export default function Recommender() {
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold ${
                         i === 0
-                          ? "bg-amber-500/15 text-amber-500"
-                          : i === 1
-                          ? "bg-slate-400/15 text-slate-400"
-                          : i === 2
-                          ? "bg-orange-700/15 text-orange-700"
-                          : "bg-muted text-muted-foreground"
+                          ? "bg-primary/25 text-primary"
+                          : "bg-primary/10 text-primary/80"
                       }`}
                     >
                       {i + 1}
@@ -96,7 +93,7 @@ export default function Recommender() {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {r.entries} {r.entries === 1 ? "entry" : "entries"} ·{" "}
-                        {r.success_rate != null ? `${Math.round(r.success_rate * 100)}% solved` : "no solved data"}
+                        {r.success_rate != null ? `${Math.round(r.success_rate * 100)}% solved` : "no outcomes yet"}
                         {r.model.vendor ? ` · ${r.model.vendor}` : ""}
                       </p>
                     </div>
@@ -112,11 +109,29 @@ export default function Recommender() {
             </CardContent>
           </Card>
 
-          <p className="text-xs text-muted-foreground">
-            Score = Bayesian-shrunk average quality (prior strength K=5, global avg = {result.global_avg_quality}).
-            Models with fewer entries are shrunk toward the global average to avoid overfitting to small samples.
-          </p>
-        </>
+          <Card className="animate-fade-in lg:self-start">
+            <CardHeader>
+              <CardTitle>How the ranking works</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs text-muted-foreground">
+              <p>
+                Score = Bayesian-shrunk average quality (prior strength K=5, global
+                average = {result.global_avg_quality}).
+              </p>
+              <p>
+                Models with fewer entries are shrunk toward the global average, so a
+                single lucky session cannot top the list.
+              </p>
+              <p>
+                Only scored entries count. Score imported sessions in{" "}
+                <Link to="/rate" className="underline hover:text-foreground">
+                  Rate
+                </Link>{" "}
+                to sharpen these numbers.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">

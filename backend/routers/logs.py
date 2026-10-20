@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import or_
 from sqlmodel import Session, func, select
 
 from backend.budget import check_budget
@@ -28,6 +29,7 @@ def _apply_filters(
     category_id: int | None,
     unrated: bool = False,
     origin: str | None = None,
+    q: str | None = None,
 ):
     if model_id is not None:
         stmt = stmt.where(LogEntry.model_id == model_id)
@@ -37,6 +39,19 @@ def _apply_filters(
         stmt = stmt.where(LogEntry.quality_score.is_(None))
     if origin:
         stmt = stmt.where(LogEntry.origin == origin)
+    if q and q.strip():
+        # Free-text search across the human-readable fields. ilike() gives
+        # case-insensitive matching on SQLite (LIKE is case-insensitive for
+        # ASCII there anyway, but this keeps the intent explicit).
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                LogEntry.task_description.ilike(like),
+                LogEntry.session_title.ilike(like),
+                LogEntry.model_name_text.ilike(like),
+                LogEntry.notes.ilike(like),
+            )
+        )
     return stmt
 
 
@@ -73,19 +88,34 @@ def list_logs(
     category_id: int | None = None,
     unrated: bool = Query(False),
     origin: str | None = None,
+    q: str | None = Query(None, max_length=200),
+    date_from: str | None = None,
+    date_to: str | None = None,
     session: Session = Depends(get_session),
 ):
-    count_stmt = _apply_filters(
-        select(func.count(LogEntry.id)), model_id, category_id, unrated, origin
+    parsed_from = _parse_date("date_from", date_from)
+    parsed_to = _parse_date("date_to", date_to)
+
+    count_stmt = _apply_date_filters(
+        _apply_filters(
+            select(func.count(LogEntry.id)), model_id, category_id, unrated, origin, q
+        ),
+        parsed_from,
+        parsed_to,
     )
     total = session.exec(count_stmt).one()
 
-    stmt = _apply_filters(
-        select(LogEntry).order_by(LogEntry.created_at.desc()),
-        model_id,
-        category_id,
-        unrated,
-        origin,
+    stmt = _apply_date_filters(
+        _apply_filters(
+            select(LogEntry).order_by(LogEntry.created_at.desc()),
+            model_id,
+            category_id,
+            unrated,
+            origin,
+            q,
+        ),
+        parsed_from,
+        parsed_to,
     )
     entries = session.exec(stmt.offset(offset).limit(limit)).all()
 
@@ -175,11 +205,16 @@ def _export_rows(
     category_id: int | None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    q: str | None = None,
+    unrated: bool = False,
 ) -> list[dict]:
     stmt = _apply_filters(
         select(LogEntry).order_by(LogEntry.created_at.desc()),
         model_id,
         category_id,
+        unrated,
+        None,
+        q,
     )
     stmt = _apply_date_filters(stmt, date_from, date_to)
     entries = session.exec(stmt).all()
@@ -206,11 +241,14 @@ def export_csv(
     category_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    q: str | None = None,
+    unrated: bool = False,
     session: Session = Depends(get_session),
 ):
     rows = _export_rows(
         session, model_id, category_id,
         _parse_date("date_from", date_from), _parse_date("date_to", date_to),
+        q, unrated,
     )
 
     buf = io.StringIO()
@@ -231,11 +269,14 @@ def export_json(
     category_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    q: str | None = None,
+    unrated: bool = False,
     session: Session = Depends(get_session),
 ):
     rows = _export_rows(
         session, model_id, category_id,
         _parse_date("date_from", date_from), _parse_date("date_to", date_to),
+        q, unrated,
     )
 
     return Response(

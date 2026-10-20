@@ -69,11 +69,22 @@ export const api = {
 
 export function downloadExport(
   format: "csv" | "json",
-  filters: { modelId?: number; categoryId?: number },
+  filters: {
+    modelId?: number;
+    categoryId?: number;
+    q?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    unrated?: boolean;
+  },
 ): void {
   const params = new URLSearchParams();
   if (filters.modelId != null) params.set("model_id", String(filters.modelId));
   if (filters.categoryId != null) params.set("category_id", String(filters.categoryId));
+  if (filters.q) params.set("q", filters.q);
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+  if (filters.dateTo) params.set("date_to", filters.dateTo);
+  if (filters.unrated) params.set("unrated", "true");
   const qs = params.toString();
   window.location.href = `/api/logs/export/${format}${qs ? `?${qs}` : ""}`;
 }

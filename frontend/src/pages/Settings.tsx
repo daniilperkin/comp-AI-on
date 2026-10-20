@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle, Bot, Activity } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import {
   useSettings,
   useUpdateSettings,
@@ -250,23 +251,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <button
-              role="switch"
-              aria-checked={motionEnabled}
-              aria-label="Motion effects"
-              onClick={() => setMotionEnabled(!motionEnabled)}
-              className={cn(
-                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                motionEnabled ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0 h-5 w-5 rounded-full bg-background shadow-sm transition-transform",
-                  motionEnabled ? "translate-x-5" : "translate-x-0.5"
-                )}
-              />
-            </button>
+            <Switch
+              checked={motionEnabled}
+              onCheckedChange={setMotionEnabled}
+              label="Motion effects"
+            />
           </div>
         </CardContent>
       </Card>
@@ -296,20 +285,15 @@ export default function SettingsPage() {
               />
             </div>
 
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2 pb-1.5">
+              <Switch
                 checked={reminderEnabled}
-                onChange={(e) => setReminderEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-primary"
+                onCheckedChange={setReminderEnabled}
+                label="Daily reminder enabled"
+                disabled={isLoading}
               />
               <span className="text-sm">Enabled</span>
-            </label>
-
-            <Button onClick={handleSave} disabled={saving || isLoading} className="gap-1">
-              {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saving ? "Saving..." : saved ? "Saved" : "Save"}
-            </Button>
+            </div>
           </div>
 
           <div className="space-y-1.5 pt-2">
@@ -329,6 +313,16 @@ export default function SettingsPage() {
               When today's derived spend crosses this amount, you get one
               warning per day through your enabled channels. Leave empty to disable.
             </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+            <Button onClick={handleSave} disabled={saving || isLoading} className="gap-1">
+              {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving..." : saved ? "Saved" : "Save"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Saves the reminder time, the budget and the channel switches below.
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -376,23 +370,13 @@ export default function SettingsPage() {
                     {testing === ch.key ? "Testing..." : "Test"}
                   </Button>
 
-                  <button
-                    role="switch"
-                    aria-checked={enabled}
-                    aria-label={`${ch.label} notifications`}
-                    onClick={() => setChannels((prev) => ({ ...prev, [ch.key]: !enabled }))}
-                    className={cn(
-                      "relative h-6 w-11 rounded-full transition-colors",
-                      enabled ? "bg-primary" : "bg-muted"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 left-0 h-5 w-5 rounded-full bg-background shadow-sm transition-transform",
-                        enabled ? "translate-x-5" : "translate-x-0.5"
-                      )}
-                    />
-                  </button>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={(value) =>
+                      setChannels((prev) => ({ ...prev, [ch.key]: value }))
+                    }
+                    label={`${ch.label} notifications`}
+                  />
                 </div>
                 </div>
 
