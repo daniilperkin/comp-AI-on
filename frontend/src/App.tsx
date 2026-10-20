@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { Command, Menu, Moon, Sun, X } from "lucide-react";
 import { Toaster } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, shortcutLabel } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { IS_DEMO } from "@/lib/api";
 import { APP_NAV } from "@/lib/navigation";
@@ -69,7 +69,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <Command className="h-4 w-4" />
           Command
           <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-medium">
-            ⌘K
+            {shortcutLabel("K")}
           </kbd>
         </button>
         <button

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useModelsCategories } from "@/lib/queries";
-import { cn, formatCost, formatDate } from "@/lib/utils";
+import { cn, formatCost, formatDate, formatInt } from "@/lib/utils";
 import type { LogEntry } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,10 +16,10 @@ const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function tokenSummary(entry: LogEntry): string | null {
   const parts: string[] = [];
-  if (entry.input_tokens) parts.push(`${entry.input_tokens.toLocaleString()} in`);
-  if (entry.output_tokens) parts.push(`${entry.output_tokens.toLocaleString()} out`);
-  if (entry.cache_read_tokens) parts.push(`${entry.cache_read_tokens.toLocaleString()} cache-read`);
-  if (entry.cache_write_tokens) parts.push(`${entry.cache_write_tokens.toLocaleString()} cache-write`);
+  if (entry.input_tokens) parts.push(`${formatInt(entry.input_tokens)} in`);
+  if (entry.output_tokens) parts.push(`${formatInt(entry.output_tokens)} out`);
+  if (entry.cache_read_tokens) parts.push(`${formatInt(entry.cache_read_tokens)} cache-read`);
+  if (entry.cache_write_tokens) parts.push(`${formatInt(entry.cache_write_tokens)} cache-write`);
   return parts.length ? parts.join(" · ") : null;
 }
 

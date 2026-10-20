@@ -5,9 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * One locale for every app-level number and date.
+ *
+ * `undefined` means "whatever the host says", which on a German Windows box
+ * renders 1468 as "1.468" and October as "Okt." inside an otherwise English
+ * UI. Pinning en-US keeps separators, month names and AM/PM consistent
+ * regardless of the machine's regional settings.
+ */
+export const LOCALE = "en-US";
+
 export function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(LOCALE, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -17,7 +27,30 @@ export function formatDate(iso: string): string {
 
 export function formatDateShort(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
+}
+
+export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return value.toLocaleString(LOCALE, options);
+}
+
+/** Integer with thousands separators ("88273" -> "88,273"). */
+export function formatInt(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
+}
+
+export function isMac(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const uaData = (navigator as Navigator & { userAgentData?: { platform?: string } })
+    .userAgentData;
+  const platform = uaData?.platform || navigator.platform || "";
+  return /mac|iphone|ipad|ipod/i.test(platform);
+}
+
+/** "⌘K" on macOS, "Ctrl K" everywhere else. */
+export function shortcutLabel(key: string): string {
+  return isMac() ? `⌘${key}` : `Ctrl ${key}`;
 }
 
 /**

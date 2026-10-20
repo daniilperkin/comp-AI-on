@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,8 +121,30 @@ export default function LogForm() {
 
       if (editingId) {
         await updateLog.mutateAsync({ id: editingId, input: payload });
+        toast.success("Entry updated");
       } else {
-        await createLog.mutateAsync(payload);
+        const entry = await createLog.mutateAsync(payload);
+        // Same confirmation as the dashboard bar and the Alt+L capture dialog:
+        // the row is already on the server, so Undo is a DELETE of that row.
+        const label =
+          entry.model_name_text?.trim() ||
+          models.find((m) => m.id === entry.model_id)?.name ||
+          "entry";
+        toast.success(`Logged ${label}`, {
+          duration: 8000,
+          description:
+            entry.quality_score !== null && entry.quality_score !== undefined
+              ? `score ${entry.quality_score}/10`
+              : undefined,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              void api.delete(`/logs/${entry.id}`).catch(() => {
+                toast.error("Could not undo that entry.");
+              });
+            },
+          },
+        });
       }
       navigate("/history");
     } catch (e) {

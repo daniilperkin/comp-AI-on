@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,15 +26,30 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
   const [outcome, setOutcome] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const descriptionRef = useRef<HTMLInputElement>(null);
 
   const activeModels = models.filter((m) => m.is_active);
   const saving = createLog.isPending;
+
+  function reset() {
+    setModelId("");
+    setCategoryId("");
+    setScore("");
+    setOutcome("");
+    setDescription("");
+    setError("");
+    setExpanded(false);
+  }
 
   async function handleSave() {
     setError("");
     const hasContent = modelId || categoryId || description.trim();
     if (!hasContent) {
+      // The collapsed bar cannot satisfy this error, so open the row that can
+      // and put the cursor in it instead of printing a hint the user can't act on.
+      setExpanded(true);
       setError("Pick a model or category, or add a description.");
+      requestAnimationFrame(() => descriptionRef.current?.focus());
       return;
     }
     const payload: LogEntryInput = {};
@@ -51,7 +66,9 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
       // toast, and the same one-click undo. The row already exists on the
       // server by now, so undo is a DELETE of the entry we just created.
       const modelLabel =
-        entry.model_name_text ?? models.find((m) => m.id === entry.model_id)?.name ?? "session";
+        entry.model_name_text?.trim() ||
+        models.find((m) => m.id === entry.model_id)?.name ||
+        "session";
       toast.success(`Logged ${modelLabel}`, {
         // Live testing made the case for a longer window than the 4s default:
         // this toast's whole purpose is the one-click correction, and four
@@ -84,11 +101,22 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
+    <form
+      className="rounded-lg border border-border bg-card p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") reset();
+      }}
+    >
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[160px] flex-1">
-          <label className="mb-1 block text-xs text-muted-foreground">Model</label>
-          <Select value={modelId} onChange={(e) => setModelId(e.target.value)}>
+          <label htmlFor="quick-model" className="mb-1 block text-xs text-muted-foreground">
+            Model
+          </label>
+          <Select id="quick-model" value={modelId} onChange={(e) => setModelId(e.target.value)}>
             <option value="">— none —</option>
             {activeModels.map((m) => (
               <option key={m.id} value={m.id}>
@@ -99,8 +127,14 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
         </div>
 
         <div className="min-w-[140px] flex-1">
-          <label className="mb-1 block text-xs text-muted-foreground">Category</label>
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <label htmlFor="quick-category" className="mb-1 block text-xs text-muted-foreground">
+            Category
+          </label>
+          <Select
+            id="quick-category"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+          >
             <option value="">— none —</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -111,8 +145,11 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
         </div>
 
         <div className="w-[80px]">
-          <label className="mb-1 block text-xs text-muted-foreground">Score (1-10)</label>
+          <label htmlFor="quick-score" className="mb-1 block text-xs text-muted-foreground">
+            Score (1-10)
+          </label>
           <Input
+            id="quick-score"
             type="number"
             min={1}
             max={10}
@@ -122,14 +159,17 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
           />
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="gap-1">
+        <Button type="submit" disabled={saving} className="gap-1">
           <Plus className="h-4 w-4" />
           {saving ? "Saving..." : "Log it"}
         </Button>
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Hide extra options" : "More options"}
+          aria-expanded={expanded}
           title={expanded ? "Less" : "More options"}
         >
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -139,8 +179,14 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
       {expanded && (
         <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
           <div className="min-w-[140px] flex-1">
-            <label className="mb-1 block text-xs text-muted-foreground">Outcome</label>
-            <Select value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+            <label htmlFor="quick-outcome" className="mb-1 block text-xs text-muted-foreground">
+              Outcome
+            </label>
+            <Select
+              id="quick-outcome"
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+            >
               <option value="">— none —</option>
               <option value="solved">Solved</option>
               <option value="partial">Partial</option>
@@ -148,20 +194,27 @@ export function QuickAddBar({ onCreated, initialModelId }: QuickAddBarProps) {
             </Select>
           </div>
           <div className="min-w-[200px] flex-[2]">
-            <label className="mb-1 block text-xs text-muted-foreground">Task description</label>
+            <label
+              htmlFor="quick-description"
+              className="mb-1 block text-xs text-muted-foreground"
+            >
+              Task description
+            </label>
             <Input
+              id="quick-description"
+              ref={descriptionRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What did you ask it to do?"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/log")}>
+          <Button type="button" variant="outline" size="sm" onClick={() => navigate("/log")}>
             Full form
           </Button>
         </div>
       )}
 
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-    </div>
+    </form>
   );
 }

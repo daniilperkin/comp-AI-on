@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Bell, Save, Check, Monitor, Globe, Send, MessageCircle, Bot, Activity } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import {
   useSettings,
   useUpdateSettings,
@@ -491,7 +491,7 @@ export default function SettingsPage() {
 
           <p className="text-xs text-muted-foreground">
             {lastSyncAt
-              ? `Last sync: ${new Date(lastSyncAt).toLocaleString()}`
+              ? `Last sync: ${formatDate(lastSyncAt)}`
               : "Never synced."}{" "}
             Imported entries are marked "auto-imported" — re-syncs skip what was
             already imported. The key is stored server-side and never shown again in full. Activity is
@@ -559,7 +559,7 @@ export default function SettingsPage() {
               : "Checking for Hermes profiles…"}{" "}
             {hermesStatus &&
               (lastHermesSyncAt
-                ? `· Last sync: ${new Date(lastHermesSyncAt).toLocaleString()}`
+                ? `· Last sync: ${formatDate(lastHermesSyncAt)}`
                 : "· Never synced.")}
           </p>
 
