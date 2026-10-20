@@ -4,6 +4,7 @@ import { Command, Menu, Moon, Sun, X } from "lucide-react";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { IS_DEMO } from "@/lib/api";
 import { APP_NAV } from "@/lib/navigation";
 import { CommandPalette, OPEN_PALETTE_EVENT } from "@/components/CommandPalette";
 import { CaptureProvider } from "@/components/QuickCapture";
@@ -13,6 +14,7 @@ import { NotificationOverlay } from "@/components/NotificationOverlay";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Log = lazy(() => import("@/pages/Log"));
 const HistoryPage = lazy(() => import("@/pages/History"));
+const RatePage = lazy(() => import("@/pages/Rate"));
 const AnalyticsPage = lazy(() => import("@/pages/Analytics"));
 const Models = lazy(() => import("@/pages/Models"));
 const SettingsPage = lazy(() => import("@/pages/Settings"));
@@ -77,7 +79,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           {theme === "dark" ? "Light mode" : "Dark mode"}
         </button>
-        <p className="mt-2 px-3 text-xs text-muted-foreground/60">v0.4.0 — local only</p>
+        <p className="mt-2 px-3 text-xs text-muted-foreground/60">
+          v0.4.0 — {IS_DEMO ? "public demo" : "local only"}
+        </p>
       </div>
     </>
   );
@@ -154,6 +158,7 @@ export default function App() {
               <Route path="/log" element={<Log />} />
               <Route path="/log/:id" element={<Log />} />
               <Route path="/history" element={<HistoryPage />} />
+              <Route path="/rate" element={<RatePage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/recommender" element={<Recommender />} />
               <Route path="/compare" element={<Compare />} />
@@ -166,6 +171,11 @@ export default function App() {
       </main>
 
       <NotificationOverlay />
+      {IS_DEMO && (
+        <div className="fixed bottom-3 left-3 z-40 rounded-full border border-border bg-card/90 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+          Demo data — changes stay in your browser
+        </div>
+      )}
       </div>
       <CommandPalette />
       <AppToaster />

@@ -7,6 +7,7 @@ import {
   PlusCircle,
   Settings,
   Sparkles,
+  Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,6 +28,7 @@ export const APP_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/log", label: "New Log", icon: PlusCircle },
   { to: "/history", label: "History", icon: History },
+  { to: "/rate", label: "Rate", icon: Star },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/recommender", label: "Recommender", icon: Sparkles },
   { to: "/compare", label: "Compare", icon: GitCompare },
