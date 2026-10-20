@@ -96,6 +96,7 @@ export default function HistoryPage() {
       <div className="flex flex-wrap gap-3">
         <div className="min-w-[180px]">
           <Select
+            aria-label="Filter by model"
             value={modelFilter}
             onChange={(e) => setFilter("model", e.target.value)}
           >
@@ -109,6 +110,7 @@ export default function HistoryPage() {
         </div>
         <div className="min-w-[180px]">
           <Select
+            aria-label="Filter by category"
             value={categoryFilter}
             onChange={(e) => setFilter("category", e.target.value)}
           >

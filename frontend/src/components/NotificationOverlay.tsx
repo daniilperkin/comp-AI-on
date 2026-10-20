@@ -57,6 +57,7 @@ export function NotificationOverlay() {
           </div>
           <button
             onClick={() => dismiss(n.id)}
+            aria-label={`Dismiss ${n.title}`}
             className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
           >
             <X className="h-4 w-4" />

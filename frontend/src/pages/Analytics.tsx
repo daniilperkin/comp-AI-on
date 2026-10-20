@@ -144,6 +144,7 @@ export default function AnalyticsPage() {
                   <button
                     key={d === null ? "all" : d}
                     type="button"
+                    aria-pressed={timelineDays === d}
                     onClick={() => setTimelineDays(d)}
                     className={cn(
                       "rounded px-2.5 py-1 transition-colors",
@@ -315,7 +316,12 @@ function MatrixHeatmap({ data }: { data: MatrixData }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-x-auto"
+      tabIndex={0}
+      role="region"
+      aria-label="Model vs category matrix"
+    >
       <table className="w-full text-xs">
         <thead>
           <tr>

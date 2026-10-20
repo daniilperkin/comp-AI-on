@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Save, Trash2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -42,6 +43,8 @@ export default function LogForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!editingId) {
@@ -156,12 +159,16 @@ export default function LogForm() {
 
   async function handleDelete() {
     if (!editingId) return;
-    if (!confirm("Delete this log entry?")) return;
+    setDeleting(true);
     try {
       await api.delete(`/logs/${editingId}`);
+      setConfirmDeleteOpen(false);
+      toast.success("Entry deleted", { duration: 6000 });
       navigate("/history");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -176,8 +183,9 @@ export default function LogForm() {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Model</Label>
+              <Label htmlFor="log-model">Model</Label>
               <Select
+                id="log-model"
                 value={form.model_id?.toString() ?? ""}
                 onChange={(e) => {
                   const val = e.target.value ? Number(e.target.value) : null;
@@ -191,6 +199,8 @@ export default function LogForm() {
                 ))}
               </Select>
               <Input
+                id="log-model-text"
+                aria-label="Or type a model name"
                 placeholder="Or type a model name"
                 value={form.model_name_text ?? ""}
                 onChange={(e) => {
@@ -201,15 +211,16 @@ export default function LogForm() {
               {isNewModel && (
                 <div className="animate-fade-in rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                     <span className="text-xs font-medium text-primary">
                       New model — will be added to your Models list
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs">Kind</Label>
+                      <Label htmlFor="log-newmodel-kind" className="text-xs">Kind</Label>
                       <Select
+                        id="log-newmodel-kind"
                         value={newModelKind}
                         onChange={(e) => setNewModelKind(e.target.value as ModelKind)}
                       >
@@ -219,8 +230,9 @@ export default function LogForm() {
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Vendor</Label>
+                      <Label htmlFor="log-newmodel-vendor" className="text-xs">Vendor</Label>
                       <Input
+                        id="log-newmodel-vendor"
                         placeholder="e.g. Anthropic"
                         value={newModelVendor}
                         onChange={(e) => setNewModelVendor(e.target.value)}
@@ -232,8 +244,9 @@ export default function LogForm() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label htmlFor="log-category">Category</Label>
               <Select
+                id="log-category"
                 value={form.category_id?.toString() ?? ""}
                 onChange={(e) => {
                   const val = e.target.value ? Number(e.target.value) : null;
@@ -247,6 +260,8 @@ export default function LogForm() {
                 ))}
               </Select>
               <Input
+                id="log-category-text"
+                aria-label="Or type a category name"
                 placeholder="Or type category name"
                 value={form.category_name_text ?? ""}
                 onChange={(e) => {
@@ -258,8 +273,9 @@ export default function LogForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Task description</Label>
+            <Label htmlFor="log-task-description">Task description</Label>
             <Textarea
+              id="log-task-description"
               rows={2}
               placeholder="What did you ask the model to do?"
               value={form.task_description ?? ""}
@@ -269,8 +285,9 @@ export default function LogForm() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>Quality score (1-10)</Label>
+              <Label htmlFor="log-quality">Quality score (1-10)</Label>
               <Input
+                id="log-quality"
                 type="number"
                 min={1}
                 max={10}
@@ -279,8 +296,9 @@ export default function LogForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Outcome</Label>
+              <Label htmlFor="log-outcome">Outcome</Label>
               <Select
+                id="log-outcome"
                 value={form.outcome ?? ""}
                 onChange={(e) => set("outcome", (e.target.value || null) as Outcome | null)}
               >
@@ -291,8 +309,9 @@ export default function LogForm() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Latency (ms)</Label>
+              <Label htmlFor="log-latency">Latency (ms)</Label>
               <Input
+                id="log-latency"
                 type="number"
                 min={0}
                 value={form.latency_ms ?? ""}
@@ -303,8 +322,9 @@ export default function LogForm() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label>Input tokens</Label>
+              <Label htmlFor="log-input-tokens">Input tokens</Label>
               <Input
+                id="log-input-tokens"
                 type="number"
                 min={0}
                 value={form.input_tokens ?? ""}
@@ -312,8 +332,9 @@ export default function LogForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Output tokens</Label>
+              <Label htmlFor="log-output-tokens">Output tokens</Label>
               <Input
+                id="log-output-tokens"
                 type="number"
                 min={0}
                 value={form.output_tokens ?? ""}
@@ -321,8 +342,9 @@ export default function LogForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Cost (USD)</Label>
+              <Label htmlFor="log-cost">Cost (USD)</Label>
               <Input
+                id="log-cost"
                 type="number"
                 step="0.0001"
                 min={0}
@@ -333,8 +355,9 @@ export default function LogForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Notes / takeaways</Label>
+            <Label htmlFor="log-notes">Notes / takeaways</Label>
             <Textarea
+              id="log-notes"
               rows={3}
               placeholder="What did you learn? What to use next time?"
               value={form.notes ?? ""}
@@ -346,12 +369,16 @@ export default function LogForm() {
 
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={saving} className="gap-1">
-              <Save className="h-4 w-4" />
+              <Save className="h-4 w-4" aria-hidden="true" />
               {saving ? "Saving..." : editingId ? "Update entry" : "Save entry"}
             </Button>
             {editingId && (
-              <Button variant="destructive" onClick={handleDelete} className="gap-1">
-                <Trash2 className="h-4 w-4" />
+              <Button
+                variant="destructive"
+                onClick={() => setConfirmDeleteOpen(true)}
+                className="gap-1"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
                 Delete
               </Button>
             )}
@@ -361,6 +388,16 @@ export default function LogForm() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete this log entry?"
+        description="The entry is removed from your log and from all statistics. This cannot be undone."
+        confirmLabel="Delete entry"
+        busy={deleting}
+        onConfirm={() => void handleDelete()}
+      />
     </div>
   );
 }

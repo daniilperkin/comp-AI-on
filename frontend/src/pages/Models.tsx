@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { QueryError } from "@/components/QueryError";
 import { useCreateModel, useDeleteModel, useModels, useUpdateModel } from "@/lib/queries";
@@ -24,6 +26,7 @@ export default function Models() {
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Model>>({});
   const [creating, setCreating] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Model | null>(null);
 
   const models = modelsData ?? [];
 
@@ -45,9 +48,33 @@ export default function Models() {
     cancel();
   }
 
-  async function remove(id: number) {
-    if (!confirm("Delete this model?")) return;
-    await deleteModel.mutateAsync(id);
+  async function confirmDelete() {
+    const model = pendingDelete;
+    if (!model) return;
+    setPendingDelete(null);
+    await deleteModel.mutateAsync(model.id);
+    // The row is gone on the server, so undo is a re-create with the same
+    // fields. It returns with a new id: log entries that referenced the
+    // deleted row keep their recorded name but cannot be relinked.
+    toast.success(`Deleted ${model.name}`, {
+      duration: 8000,
+      description: "Undo re-creates the model with a new id.",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void createModel
+            .mutateAsync({
+              name: model.name,
+              kind: model.kind,
+              vendor: model.vendor ?? "",
+              is_active: model.is_active,
+              input_price_per_mtok: model.input_price_per_mtok ?? null,
+              output_price_per_mtok: model.output_price_per_mtok ?? null,
+            })
+            .catch(() => toast.error("Could not restore that model."));
+        },
+      },
+    });
   }
 
   function startCreate() {
@@ -76,7 +103,7 @@ export default function Models() {
           <p className="text-sm text-muted-foreground">Manage the models you track.</p>
         </div>
         <Button onClick={startCreate} className="gap-1">
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Add model
         </Button>
       </div>
@@ -87,13 +114,13 @@ export default function Models() {
             <CardTitle>New model</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ModelFields draft={draft} setDraft={setDraft} />
+            <ModelFields idPrefix="new-model" draft={draft} setDraft={setDraft} />
             <div className="flex gap-2">
               <Button onClick={save} className="gap-1">
-                <Check className="h-4 w-4" /> Save
+                <Check className="h-4 w-4" aria-hidden="true" /> Save
               </Button>
               <Button variant="outline" onClick={cancel} className="gap-1">
-                <X className="h-4 w-4" /> Cancel
+                <X className="h-4 w-4" aria-hidden="true" /> Cancel
               </Button>
             </div>
           </CardContent>
@@ -110,13 +137,17 @@ export default function Models() {
             editing === m.id ? (
               <Card key={m.id}>
                 <CardContent className="space-y-4 pt-4">
-                  <ModelFields draft={draft} setDraft={setDraft} />
+                  <ModelFields
+                    idPrefix={`edit-model-${m.id}`}
+                    draft={draft}
+                    setDraft={setDraft}
+                  />
                   <div className="flex gap-2">
                     <Button onClick={save} className="gap-1">
-                      <Check className="h-4 w-4" /> Save
+                      <Check className="h-4 w-4" aria-hidden="true" /> Save
                     </Button>
                     <Button variant="outline" onClick={cancel} className="gap-1">
-                      <X className="h-4 w-4" /> Cancel
+                      <X className="h-4 w-4" aria-hidden="true" /> Cancel
                     </Button>
                   </div>
                 </CardContent>
@@ -135,11 +166,21 @@ export default function Models() {
                     {!m.is_active && <Badge variant="outline">inactive</Badge>}
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => startEdit(m)}>
-                      <Pencil className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => startEdit(m)}
+                      aria-label={`Edit ${m.name}`}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPendingDelete(m)}
+                      aria-label={`Delete ${m.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 </CardContent>
@@ -148,30 +189,47 @@ export default function Models() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={`Delete ${pendingDelete?.name ?? "model"}?`}
+        description="Log entries that reference this model keep their recorded name but lose the link. You can undo this right after."
+        confirmLabel="Delete model"
+        busy={deleteModel.isPending}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }
 
 function ModelFields({
+  idPrefix,
   draft,
   setDraft,
 }: {
+  idPrefix: string;
   draft: Partial<Model>;
   setDraft: (d: Partial<Model>) => void;
 }) {
+  const id = (name: string) => `${idPrefix}-${name}`;
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       <div className="space-y-1.5">
-        <Label>Name</Label>
+        <Label htmlFor={id("name")}>Name</Label>
         <Input
+          id={id("name")}
           value={draft.name ?? ""}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="e.g. Claude 3.5 Sonnet"
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Kind</Label>
+        <Label htmlFor={id("kind")}>Kind</Label>
         <Select
+          id={id("kind")}
           value={draft.kind ?? "web"}
           onChange={(e) => setDraft({ ...draft, kind: e.target.value as ModelKind })}
         >
@@ -181,16 +239,18 @@ function ModelFields({
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label>Vendor</Label>
+        <Label htmlFor={id("vendor")}>Vendor</Label>
         <Input
+          id={id("vendor")}
           value={draft.vendor ?? ""}
           onChange={(e) => setDraft({ ...draft, vendor: e.target.value })}
           placeholder="e.g. Anthropic"
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Input price ($/MTok)</Label>
+        <Label htmlFor={id("input-price")}>Input price ($/MTok)</Label>
         <Input
+          id={id("input-price")}
           type="number"
           step="any"
           min="0"
@@ -205,8 +265,9 @@ function ModelFields({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Output price ($/MTok)</Label>
+        <Label htmlFor={id("output-price")}>Output price ($/MTok)</Label>
         <Input
+          id={id("output-price")}
           type="number"
           step="any"
           min="0"

@@ -40,7 +40,11 @@ export default function Recommender() {
         </CardHeader>
         <CardContent>
           <div className="max-w-xs">
-            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <Select
+              aria-label="Task category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
               <option value="">All categories (global)</option>
               {categories?.map((c) => (
                 <option key={c.id} value={c.id}>

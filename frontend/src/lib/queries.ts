@@ -233,8 +233,14 @@ export function useDeleteLog() {
 export function useCreateModel() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; kind: string; vendor: string | null; is_active: boolean }) =>
-      api.post<Model>("/models", input),
+    mutationFn: (input: {
+      name: string;
+      kind: string;
+      vendor: string | null;
+      is_active: boolean;
+      input_price_per_mtok?: number | null;
+      output_price_per_mtok?: number | null;
+    }) => api.post<Model>("/models", input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.models });
       qc.invalidateQueries({ queryKey: ["stats"] });

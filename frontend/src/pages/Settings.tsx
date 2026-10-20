@@ -286,8 +286,9 @@ export default function SettingsPage() {
 
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <Label>Reminder time</Label>
+              <Label htmlFor="reminder-time">Reminder time</Label>
               <Input
+                id="reminder-time"
                 type="time"
                 value={reminderTime}
                 disabled={isLoading}
@@ -312,8 +313,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-1.5 pt-2">
-            <Label>Daily budget (USD)</Label>
+            <Label htmlFor="daily-budget">Daily budget (USD)</Label>
             <Input
+              id="daily-budget"
               type="number"
               step="any"
               min="0"
@@ -377,6 +379,7 @@ export default function SettingsPage() {
                   <button
                     role="switch"
                     aria-checked={enabled}
+                    aria-label={`${ch.label} notifications`}
                     onClick={() => setChannels((prev) => ({ ...prev, [ch.key]: !enabled }))}
                     className={cn(
                       "relative h-6 w-11 rounded-full transition-colors",
@@ -395,8 +398,9 @@ export default function SettingsPage() {
 
                 {ch.webhookUrlKey && ch.webhookUrlLabel && enabled && (
                   <div className="mt-3 pl-12">
-                    <Label className="text-xs">{ch.webhookUrlLabel}</Label>
+                    <Label htmlFor={`webhook-${ch.key}`} className="text-xs">{ch.webhookUrlLabel}</Label>
                     <Input
+                      id={`webhook-${ch.key}`}
                       value={webhookUrls[ch.webhookUrlKey] ?? ""}
                       onChange={(e) =>
                         setWebhookUrls((prev) => ({
@@ -442,8 +446,9 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <Label>API key</Label>
+              <Label htmlFor="openrouter-key">API key</Label>
               <Input
+                id="openrouter-key"
                 type="password"
                 className="w-72 font-mono text-xs"
                 value={syncApiKey}
