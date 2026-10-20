@@ -57,6 +57,27 @@ def test_stats_leaderboard(client):
     assert data[0]["success_rate"] == 0.5
 
 
+def test_stats_success_rate_ignores_outcome_less_entries(client):
+    client.post("/api/logs", json={"task_description": "synced without outcome 1"})
+    client.post("/api/logs", json={"task_description": "synced without outcome 2"})
+    client.post("/api/logs", json={"task_description": "manual ok", "outcome": "solved"})
+    client.post("/api/logs", json={"task_description": "manual bad", "outcome": "failed"})
+
+    data = client.get("/api/stats/overview").json()
+    assert data["total_entries"] == 4
+    assert data["success_rate"] == 0.5
+
+
+def test_stats_leaderboard_success_rate_ignores_outcome_less(client):
+    model = client.post("/api/models", json={"name": "MixModel", "kind": "web"}).json()
+    client.post("/api/logs", json={"model_id": model["id"], "outcome": "solved"})
+    client.post("/api/logs", json={"model_id": model["id"], "quality_score": 7})
+
+    data = client.get("/api/stats/leaderboard").json()
+    assert data[0]["entries"] == 2
+    assert data[0]["success_rate"] == 1.0
+
+
 def test_stats_matrix(client):
     model = client.post("/api/models", json={"name": "MatrixModel", "kind": "web"}).json()
     cat = client.post("/api/categories", json={"name": "MatrixCat"}).json()

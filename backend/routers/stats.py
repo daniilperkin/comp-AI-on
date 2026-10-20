@@ -37,6 +37,9 @@ def overview(session: Session = Depends(get_session)):
     solved = session.exec(
         select(func.count(LogEntry.id)).where(LogEntry.outcome == Outcome.solved)
     ).one()
+    outcome_count = session.exec(
+        select(func.count(LogEntry.id)).where(LogEntry.outcome.is_not(None))
+    ).one()
 
     seven_days_ago = _utcnow_naive() - timedelta(days=7)
     last_7_days = session.exec(
@@ -97,7 +100,7 @@ def overview(session: Session = Depends(get_session)):
     return {
         "total_entries": total,
         "avg_quality": round(avg_quality, 2) if avg_quality is not None else None,
-        "success_rate": round(solved / total, 2) if total > 0 else None,
+        "success_rate": round(solved / outcome_count, 2) if outcome_count > 0 else None,
         "last_7_days": last_7_days,
         "total_cost_30d": round(spend_30d, 6),
         "total_cost_all_time": round(spend_all_time, 6),
@@ -140,6 +143,7 @@ def leaderboard(session: Session = Depends(get_session)):
             func.avg(LogEntry.quality_score).label("avg_quality"),
             func.count(LogEntry.id).label("entries"),
             func.sum(case((LogEntry.outcome == Outcome.solved, 1), else_=0)).label("solved"),
+            func.sum(case((LogEntry.outcome.is_not(None), 1), else_=0)).label("rated"),
             func.coalesce(
                 func.sum(
                     func.coalesce(
@@ -160,7 +164,7 @@ def leaderboard(session: Session = Depends(get_session)):
 
     model_map = _load_models(session, [r[0] for r in rows])
     result = []
-    for model_id, avg_q, entries, solved, total_cost in rows:
+    for model_id, avg_q, entries, solved, rated, total_cost in rows:
         if model_id is None:
             continue
         m = model_map.get(model_id)
@@ -169,7 +173,7 @@ def leaderboard(session: Session = Depends(get_session)):
                 "model": m,
                 "avg_quality": round(avg_q, 2) if avg_q is not None else None,
                 "entries": entries,
-                "success_rate": round(solved / entries, 2) if entries > 0 else None,
+                "success_rate": round(solved / rated, 2) if rated > 0 else None,
                 "total_cost": round(total_cost or 0.0, 6),
             })
 
