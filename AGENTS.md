@@ -55,6 +55,7 @@ comp[AI]on/
 │   ├── db.py                  # Engine, session dependency, init_db()
 │   ├── config.py              # Configuration and settings
 │   ├── costing.py             # Cost derivation (explicit > token-derived > unknown)
+│   ├── pricing.py             # Measured per-model token rates (override the stored estimate)
 │   ├── budget.py              # Daily budget check (once-per-day warning)
 │   ├── openrouter_sync.py     # OpenRouter usage sync (fetch, dedupe, map)
 │   ├── hermes_sync.py         # Hermes usage sync (state.db read-only, upsert)
@@ -277,7 +278,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 ### Key design decisions
 - Log entries have **both** FK fields (`model_id`, `category_id`) AND free-text fallbacks (`model_name_text`, `category_name_text`) — allows quick-add without picking from a list
 - All fields on `log_entries` are optional except `id` and `created_at` — validation requires at least one of: model, category, or task_description
-- The Hermes sync reads every Hermes profile's `state.db` read-only (root: `%LOCALAPPDATA%/hermes`, override `COMPANION_HERMES_HOME`) and imports one entry per session × model × task, upserted by `external_id` (`hermes:<profile>:<session>:<pk-hash>`) — live sessions' usage rows keep accumulating, so re-syncs update existing rows instead of skipping them. Runs on startup + every 30 min (APScheduler job `hermes_sync`) and via `POST /api/sync/hermes/run`. Cost is Hermes' stored `estimated_cost_usd` (OpenRouter headline pricing — overstates post-2026-10-07 pinned deepseek-v4.1-flash rows ~2.2x; opus/glm stored estimates verified accurate; deliberate choice, recalibrate via measured rates if it matters). Daily views overcount multi-day sessions (rows are cumulative) — accepted limitation. Slugs without a matching Model row are auto-registered on sync (`kind=web`, vendor = billing provider), so spend, leaderboard and the History model filter attribute fleet usage instead of lumping it into "Unknown"; existing rows are backfilled on the next sync. `success_rate` (overview + leaderboard) divides by entries that actually carry an outcome — Hermes rows have none, and counting them would dilute the rate to 0.
+- The Hermes sync reads every Hermes profile's `state.db` read-only (root: `%LOCALAPPDATA%/hermes`, override `COMPANION_HERMES_HOME`) and imports one entry per session × model × task, upserted by `external_id` (`hermes:<profile>:<session>:<pk-hash>`) — live sessions' usage rows keep accumulating, so re-syncs update existing rows instead of skipping them. Runs on startup + every 30 min (APScheduler job `hermes_sync`) and via `POST /api/sync/hermes/run`. Cost comes from `backend/pricing.py`'s measured rate for the model when one exists (recomputed from the token buckets), then Hermes' `actual_cost_usd`, then its stored `estimated_cost_usd` (catalog headline pricing). Only the deepseek-v4.1-flash family has a measured rate so far ($0.10 in / $0.60 out / $0.003 cache-read per M); everything else is still an estimate, which is why the Dashboard labels the spend figure "estimated". Daily views overcount multi-day sessions (rows are cumulative) — accepted limitation. Slugs without a matching Model row are auto-registered on sync (`kind=web`, vendor = billing provider), so spend, leaderboard and the History model filter attribute fleet usage instead of lumping it into "Unknown"; existing rows are backfilled on the next sync. `success_rate` (overview + leaderboard) divides by entries that actually carry an outcome — Hermes rows have none, and counting them would dilute the rate to 0.
 - **Migrations (Alembic)** manage the schema. On startup `init_db()` runs `alembic upgrade head`. Pre-existing pre-Alembic databases are auto-adopted: stamped to the baseline revision then upgraded. Fresh databases run all migrations from empty.
 - `PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`, `PRAGMA synchronous=NORMAL` are applied per connection (see `backend/db.py`'s SQLAlchemy `connect` event listener) — WAL sidecars (`database.db-wal`, `database.db-shm`) are gitignored.
 - Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `seed_version` = `"3"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
@@ -309,7 +310,7 @@ All API routes are prefixed with `/api`.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | Liveness check |
-| GET, POST | `/api/logs` | List (with filters) / create log entry |
+| GET, POST | `/api/logs` | List / create. Filters: `model_id`, `category_id`, `origin`, `unrated`, `q` (task/session/model/notes), `date_from`/`date_to` (YYYY-MM-DD), `limit`/`offset` |
 | GET, PATCH, DELETE | `/api/logs/{id}` | Single log entry CRUD |
 | GET | `/api/logs/export/csv` | Download all log entries as CSV |
 | GET | `/api/logs/export/json` | Download all log entries as JSON |
