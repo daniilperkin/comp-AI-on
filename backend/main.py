@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, text
 
@@ -74,5 +74,9 @@ if os.path.isdir(FRONTEND_DIST):
 
     @app.get("/{full_path:path}")
     def spa(full_path: str):
+        # Unknown API paths must 404 as JSON instead of falling through to the
+        # SPA shell, otherwise a removed/typo'd endpoint answers 200 with HTML.
+        if full_path == "api" or full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         index = os.path.join(FRONTEND_DIST, "index.html")
         return FileResponse(index)
