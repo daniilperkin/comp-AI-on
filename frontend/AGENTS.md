@@ -7,6 +7,7 @@
 
 | Task | Where to look |
 |---|---|
+| Touch UI (colour, spacing, motion) | Read `DESIGN.md` first — tokens, motion rules and contrast floors |
 | Add a new page | `src/pages/MyPage.tsx` + route in `App.tsx` + nav entry |
 | Add a UI primitive | `src/components/ui/mycomponent.tsx` — use `cn()`, `forwardRef` |
 | Add a feature component | `src/components/MyComponent.tsx` |
