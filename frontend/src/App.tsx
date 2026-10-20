@@ -80,7 +80,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {theme === "dark" ? "Light mode" : "Dark mode"}
         </button>
         <p className="mt-2 px-3 text-xs text-muted-foreground/60">
-          v0.4.0 — {IS_DEMO ? "public demo" : "local only"}
+          v0.5.0 — {IS_DEMO ? "public demo" : "local only"}
         </p>
       </div>
     </>

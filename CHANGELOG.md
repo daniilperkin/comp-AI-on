@@ -4,9 +4,9 @@ All notable changes to comp[AI]on are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] — 2026-10-20
+## [0.5.0] — 2026-10-20
 
-First stable release: a local-first developer log for AI-model consumption
+First public release: a local-first developer log for AI-model consumption
 with quality scores, spend tracking and analytics.
 
 ### Added

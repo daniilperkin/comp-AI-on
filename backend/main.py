@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     logger.info("comp[AI]on stopped")
 
 
-app = FastAPI(title="comp[AI]on", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="comp[AI]on", version="0.5.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
