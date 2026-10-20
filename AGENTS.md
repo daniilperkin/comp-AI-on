@@ -263,7 +263,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 ### Schema (SQLModel tables)
 - **models**: id, name (unique), kind (local/web/agentic), vendor, is_active, input_price_per_mtok, output_price_per_mtok, created_at
 - **categories**: id, name (unique), color, created_at
-- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, latency_ms, notes, external_id (sync dedupe), origin (manual/openrouter/hermes)
+- **log_entries**: id, created_at, model_id (FK), model_name_text, category_id (FK), category_name_text, task_description, session_title, quality_score (1-10), outcome (solved/partial/failed), input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, latency_ms, notes, external_id (sync dedupe), origin (manual/openrouter/hermes)
 - **settings**: key (PK), value (string)
 - **notifications**: id, created_at, title, body, channel (only `browser` rows are stored), shown
 - **alembic_version**: Alembic's bookkeeping table (single row with the current revision)

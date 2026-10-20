@@ -125,7 +125,7 @@ def create_log(payload: LogEntryCreate, session: Session = Depends(get_session))
 
 
 CSV_COLUMNS = [
-    "id", "created_at", "model", "category", "task_description",
+    "id", "created_at", "model", "category", "task_description", "session_title",
     "quality_score", "outcome", "input_tokens", "output_tokens",
     "cost_usd", "derived_cost_usd", "latency_ms", "notes",
 ]
@@ -157,6 +157,7 @@ def _resolve_names(session: Session, entries: list[LogEntry]) -> list[dict]:
             "model": model_name,
             "category": category_name,
             "task_description": e.task_description or "",
+            "session_title": e.session_title or "",
             "quality_score": e.quality_score if e.quality_score is not None else "",
             "outcome": e.outcome.value if e.outcome else "",
             "input_tokens": e.input_tokens if e.input_tokens is not None else "",

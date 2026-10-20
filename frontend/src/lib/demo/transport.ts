@@ -385,9 +385,10 @@ function exportLogs(format: "csv" | "json", params: URLSearchParams): void {
     type = "application/json";
   } else {
     const headers = [
-      "id", "created_at", "model", "category", "task_description", "quality_score", "outcome",
-      "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
-      "reasoning_tokens", "cost_usd", "latency_ms", "notes",
+      "id", "created_at", "model", "category", "task_description", "session_title",
+      "quality_score", "outcome", "input_tokens", "output_tokens",
+      "cache_read_tokens", "cache_write_tokens", "reasoning_tokens",
+      "cost_usd", "latency_ms", "notes",
     ];
     const models = modelMap();
     const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
@@ -402,6 +403,7 @@ function exportLogs(format: "csv" | "json", params: URLSearchParams): void {
             ? getDb().categories.find((c) => c.id === e.category_id)?.name ?? ""
             : "",
           e.task_description,
+          e.session_title,
           e.quality_score,
           e.outcome,
           e.input_tokens,
@@ -475,6 +477,7 @@ export const demoTransport: Transport = {
           category_id: payload.category_id ?? null,
           category_name_text: payload.category_name_text ?? null,
           task_description: payload.task_description ?? null,
+          session_title: payload.session_title ?? null,
           quality_score: payload.quality_score ?? null,
           outcome: payload.outcome ?? null,
           input_tokens: payload.input_tokens ?? null,

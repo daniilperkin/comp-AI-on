@@ -27,6 +27,7 @@ export interface LogEntry {
   category_id: number | null;
   category_name_text: string | null;
   task_description: string | null;
+  session_title: string | null;
   quality_score: number | null;
   outcome: Outcome | null;
   input_tokens: number | null;
@@ -46,6 +47,7 @@ export interface LogEntryInput {
   category_id?: number | null;
   category_name_text?: string | null;
   task_description?: string | null;
+  session_title?: string | null;
   quality_score?: number | null;
   outcome?: Outcome | null;
   input_tokens?: number | null;

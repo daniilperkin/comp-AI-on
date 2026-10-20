@@ -93,6 +93,7 @@ class LogEntryBase(SQLModel):
     category_id: int | None = Field(default=None, foreign_key="categories.id")
     category_name_text: str | None = Field(default=None, max_length=100)
     task_description: str | None = Field(default=None, max_length=500)
+    session_title: str | None = Field(default=None, max_length=200)
     quality_score: int | None = Field(default=None, ge=1, le=10)
     outcome: Outcome | None = None
     input_tokens: int | None = Field(default=None, ge=0)
@@ -128,6 +129,7 @@ class LogEntryUpdate(SQLModel):
     category_id: int | None = None
     category_name_text: str | None = Field(default=None, max_length=100)
     task_description: str | None = Field(default=None, max_length=500)
+    session_title: str | None = Field(default=None, max_length=200)
     quality_score: int | None = Field(default=None, ge=1, le=10)
     outcome: Outcome | None = None
     input_tokens: int | None = Field(default=None, ge=0)

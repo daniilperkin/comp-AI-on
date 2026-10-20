@@ -125,6 +125,7 @@ def test_run_sync_maps_usage_to_entries(session, tmp_path):
     assert entry.cache_write_tokens == 30
     assert entry.reasoning_tokens == 10
     assert entry.cost_usd == 0.0123
+    assert entry.session_title == "Fix the bug"
     assert entry.external_id.startswith("hermes:default:s1:")
     assert entry.created_at == datetime.fromtimestamp(1500, tz=UTC).replace(tzinfo=None)
     assert "Fix the bug" in entry.notes

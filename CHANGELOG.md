@@ -12,6 +12,9 @@ with quality scores, spend tracking and analytics.
 ### Added
 - Log entries with quality (1–10), outcome, category, task, tokens, latency,
   cost and notes; quick-add bar on the dashboard, full form, edit/delete.
+- Hermes chat/session titles imported as a first-class field — the History
+  table and the rate queue show what each session was about, not just the
+  model and a synthetic "auto-imported" marker.
 - Analytics: daily timeline (7/30/90/all), model leaderboard, model×category
   quality matrix, spend breakdown per day and per model.
 - Spend tracking: per-model $/MTok prices with automatic cost derivation,
@@ -39,6 +42,8 @@ with quality scores, spend tracking and analytics.
   entries that actually carry an outcome.
 - One-click launchers failed when the repo path contains brackets
   (PowerShell `Test-Path` wildcard semantics).
+- The sidebar footer (Command palette, theme toggle) scrolled away with long
+  pages; it is now pinned to the viewport with the nav scrolling on its own.
 
 ### Notes
 - Local-only by design: no auth, no telemetry; SQLite is the single source of

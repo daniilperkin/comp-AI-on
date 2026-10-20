@@ -180,7 +180,7 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
               />
             </TableHead>
             <TableHead>Category</TableHead>
-            <TableHead className="max-w-[280px]">Task</TableHead>
+            <TableHead className="max-w-[280px]">Session / Task</TableHead>
             <TableHead {...sortHeaderProps("score")}>
               <SortLabel
                 column="score"
@@ -220,8 +220,29 @@ export function LogTable({ entries, emptyHint }: LogTableProps) {
                     "—"
                   )}
                 </TableCell>
-                <TableCell className="max-w-[280px] truncate text-muted-foreground">
-                  {e.task_description ?? "—"}
+                <TableCell className="max-w-[280px]">
+                  {e.session_title ? (
+                    <div className="min-w-0">
+                      <p
+                        className="truncate font-medium text-foreground"
+                        title={e.session_title}
+                      >
+                        {e.session_title}
+                      </p>
+                      {e.task_description && (
+                        <p
+                          className="truncate text-xs text-muted-foreground/70"
+                          title={e.task_description}
+                        >
+                          {e.task_description}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="block truncate text-muted-foreground">
+                      {e.task_description ?? "—"}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {e.quality_score !== null && e.quality_score !== undefined ? (

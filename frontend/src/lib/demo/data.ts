@@ -60,6 +60,19 @@ const TASKS = [
 
 const HERMES_TASKS = ["", "", "", "title_generation", "compression", "approval"];
 
+const SESSION_TITLES = [
+  "Fix flaky integration test",
+  "Build the dashboard layout",
+  "Refactor the router module",
+  "Investigate memory spike",
+  "Write the new migration",
+  "Review PR #128",
+  "Optimise the slow query",
+  "Set up CI pipeline",
+  "Compare chart libraries",
+  "Explain WebSocket reconnects",
+];
+
 function iso(daysAgo: number, minuteJitter: number): string {
   return new Date(Date.now() - daysAgo * DAY - minuteJitter * 60_000)
     .toISOString()
@@ -138,6 +151,7 @@ export function buildDemoDb(): DemoDb {
             ? `auto-imported (hermes:${task})`
             : "auto-imported (hermes)"
           : task,
+        session_title: hermes ? pick(rand, SESSION_TITLES) : null,
         quality_score: quality,
         outcome,
         input_tokens: inputTokens,

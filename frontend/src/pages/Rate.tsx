@@ -155,6 +155,11 @@ export default function Rate() {
               )}
             </div>
             <CardDescription>
+              {current.session_title && (
+                <span className="mb-1 block truncate font-medium text-foreground/90">
+                  {current.session_title}
+                </span>
+              )}
               {formatDate(current.created_at)}
               {current.task_description ? ` · ${current.task_description}` : ""}
             </CardDescription>

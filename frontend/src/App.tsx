@@ -40,7 +40,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <span className="text-base font-bold tracking-tight text-foreground">comp<span className="text-muted-foreground">[AI]</span>on</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {nav.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -61,7 +61,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-border p-3">
+      <div className="shrink-0 border-t border-border p-3">
         <button
           onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
           className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"
@@ -146,7 +146,7 @@ export default function App() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="animate-slide-in hidden w-56 shrink-0 flex-col border-r border-border bg-card/50 lg:flex">
+      <aside className="animate-slide-in sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-card/50 lg:flex">
         <SidebarContent />
       </aside>
 

@@ -266,6 +266,7 @@ def _entry_fields(
 
     fields: dict[str, Any] = {
         "task_description": _task_marker(str(row.get("task") or "")),
+        "session_title": (str(row.get("session_title") or "").strip() or None),
         "input_tokens": in_tok,
         "output_tokens": out_tok,
         "cache_read_tokens": cache_read,
@@ -286,7 +287,7 @@ def _entry_fields(
 
 
 _UPDATABLE_FIELDS = (
-    "model_id", "model_name_text", "task_description", "input_tokens",
+    "model_id", "model_name_text", "task_description", "session_title", "input_tokens",
     "output_tokens", "cache_read_tokens", "cache_write_tokens",
     "reasoning_tokens", "cost_usd", "notes",
 )
