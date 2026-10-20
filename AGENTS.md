@@ -42,6 +42,7 @@ comp[AI]on/
 ├── alembic.ini                # Alembic config (script_location = backend/migrations)
 ├── pytest.ini
 ├── .github/workflows/ci.yml   # CI gate
+├── .github/workflows/pages.yml # GitHub Pages demo deploy (VITE_DATA_SOURCE=demo)
 ├── start.bat                  # One-click launcher (default)
 ├── start.ps1                  # PowerShell launcher
 │
@@ -122,6 +123,8 @@ comp[AI]on/
         │   ├── api.ts         # Fetch wrapper (get/post/patch/put/delete)
         │   ├── queries.ts     # Shared React Query hooks (incl. useModelsCategories)
         │   ├── navigation.ts  # APP_NAV sidebar entries
+        │   ├── demo/          # In-browser fixtures + mock transport (Pages demo build)
+        │   ├── mirror/        # Firestore read-only transport (phone-view build)
         │   ├── theme.tsx      # ThemeProvider — system-theme detection + localStorage persistence
         │   ├── utils.ts       # cn(), formatDate(), formatDateShort(), formatCost()
         │   └── *.test.ts(x)   # api, theme, utils tests
@@ -142,6 +145,7 @@ comp[AI]on/
             ├── Dashboard.tsx   # Overview stats + quick add + recent entries
             ├── Log.tsx         # Full log form page (create/edit)
             ├── History.tsx     # Filterable log table
+            ├── Rate.tsx        # Keyboard-driven rating queue for unrated entries
             ├── Models.tsx      # Model CRUD UI
             ├── Settings.tsx    # Settings (reminder, channels, budget, OpenRouter sync)
             ├── Analytics.tsx   # Analytics charts (timeline, leaderboard, matrix)
@@ -153,14 +157,17 @@ comp[AI]on/
 ## 4. Development Setup
 
 ### First-time setup
-Run either launcher — it auto-creates the venv, installs all deps, and starts both servers:
+Run either launcher — it auto-creates the venv, installs all deps, starts both servers **without console windows**, and opens the browser:
 ```
 start.bat
 ```
-or
+or `start.vbs` (completely silent — no console flash). Stop with `stop.bat` / `.\stop.ps1`. Server output lands in `logs/` (`backend.log`, `frontend.log`, `launcher.log`, `setup.log`; gitignored).
+
+For development with hot reload in a single console (Ctrl+C stops both):
 ```
-.\start.ps1
+.\start.ps1 -Windowed
 ```
+Launcher internals: `scripts/run-backend.bat` / `scripts/run-frontend.bat` are the per-server wrappers; hidden launches go through `WScript.Shell.Run` because `Start-Process` wildcard-resolves paths under this repo's bracket directory.
 
 ### Manual setup (if launcher fails)
 ```powershell
@@ -194,8 +201,10 @@ npm run dev
 
 | Command | What it does | Where to run |
 |---|---|---|
-| `start.bat` | Auto-setup + launch both servers | Repo root |
-| `.\start.ps1` | Same, PowerShell version | Repo root |
+| `start.bat` | Auto-setup + launch both servers hidden (no windows) + open browser | Repo root |
+| `start.vbs` | Same, completely silent (no console flash) | Repo root |
+| `stop.bat` | Stop both servers (frees ports 8765/6769) | Repo root |
+| `.\start.ps1 -Windowed` | Both servers in one console (hot reload, Ctrl+C stops) | Repo root |
 | `npm run dev` | Start Vite dev server | `frontend/` |
 | `npm run build` | TypeScript check + Vite production build | `frontend/` |
 | `npm run preview` | Preview production build | `frontend/` |
