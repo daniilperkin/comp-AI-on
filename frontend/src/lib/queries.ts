@@ -115,19 +115,14 @@ export function useLogsPaged(
   const query = useQuery({
     queryKey: queryKeys.logs({ ...params, offset: page * LOGS_PAGE_SIZE }),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/logs${buildLogsQuery({
+      const { data, total } = await api.list<LogEntry[]>(
+        `/logs${buildLogsQuery({
           ...params,
           limit: LOGS_PAGE_SIZE,
           offset: page * LOGS_PAGE_SIZE,
         })}`,
-        { headers: { "Content-Type": "application/json" } },
       );
-      if (!res.ok) throw new Error(res.statusText);
-      return {
-        entries: (await res.json()) as LogEntry[],
-        total: Number(res.headers.get("X-Total-Count") ?? "0"),
-      };
+      return { entries: data, total };
     },
     staleTime: STALE_DEFAULT,
     placeholderData: (prev) => prev,

@@ -5,6 +5,7 @@ import { LogTableSkeleton } from "@/components/ui/skeleton";
 import { buttonVariants } from "@/components/ui/button";
 import { QueryError } from "@/components/QueryError";
 import { cn } from "@/lib/utils";
+import { downloadExport } from "@/lib/api";
 import { Plus, Download } from "lucide-react";
 import {
   LOGS_PAGE_SIZE,
@@ -55,12 +56,8 @@ export default function HistoryPage() {
     nextPage,
   } = useLogsPaged({ modelId, categoryId });
 
-  function exportUrl(format: "csv" | "json") {
-    const params = new URLSearchParams();
-    if (modelFilter) params.set("model_id", modelFilter);
-    if (categoryFilter) params.set("category_id", categoryFilter);
-    const qs = params.toString();
-    return `/api/logs/export/${format}${qs ? `?${qs}` : ""}`;
+  function handleExport(format: "csv" | "json") {
+    downloadExport(format, { modelId, categoryId });
   }
 
   return (
@@ -79,20 +76,20 @@ export default function HistoryPage() {
           >
             <Plus className="h-4 w-4" /> New entry
           </Link>
-          <a
-            href={exportUrl("csv")}
-            download
+          <button
+            type="button"
+            onClick={() => handleExport("csv")}
             className={cn(buttonVariants({ variant: "outline" }), "gap-1")}
           >
             <Download className="h-4 w-4" /> CSV
-          </a>
-          <a
-            href={exportUrl("json")}
-            download
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport("json")}
             className={cn(buttonVariants({ variant: "outline" }), "gap-1")}
           >
             <Download className="h-4 w-4" /> JSON
-          </a>
+          </button>
         </div>
       </div>
 
