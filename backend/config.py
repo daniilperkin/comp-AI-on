@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     frontend_port: int = 6769
     db_path: str = ""
     timezone: str = ""
-    firebase_credentials: str = ""
-    firebase_project_id: str = ""
 
     @property
     def cors_origin(self) -> str:

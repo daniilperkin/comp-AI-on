@@ -7,7 +7,6 @@ import { downloadDemoExport } from "@/lib/demo/transport";
  * by the in-browser fixtures instead of the FastAPI server.
  */
 export const IS_DEMO = true;
-export const IS_MIRROR = false;
 
 export const api = {
   get: <T>(path: string) => demoTransport.request<T>("GET", path),

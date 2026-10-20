@@ -58,7 +58,6 @@ comp[AI]on/
 │   ├── budget.py              # Daily budget check (once-per-day warning)
 │   ├── openrouter_sync.py     # OpenRouter usage sync (fetch, dedupe, map)
 │   ├── hermes_sync.py         # Hermes usage sync (state.db read-only, upsert)
-│   ├── firebase_mirror.py     # One-way Firestore mirror (phone view + backup)
 │   ├── models.py              # All SQLModel tables + create/update schemas
 │   ├── seed.py                # Default seed data (models, categories, settings)
 │   ├── notify.py              # Notification handlers (toast, browser, webhooks)
@@ -72,13 +71,12 @@ comp[AI]on/
 │   │       ├── 0004_model_pricing.py
 │   │       ├── 0005_logentry_external_id.py
 │   │       └── 0006_logentry_hermes_fields.py
-│   ├── tests/                 # pytest test suite (123 tests)
+│   ├── tests/                 # pytest test suite (119 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_budget.py
 │   │   ├── test_categories.py
 │   │   ├── test_costing.py
 │   │   ├── test_export_monthly.py
-│   │   ├── test_firebase_mirror.py
 │   │   ├── test_hermes_sync.py
 │   │   ├── test_logs.py
 │   │   ├── test_models.py
@@ -124,7 +122,6 @@ comp[AI]on/
         │   ├── queries.ts     # Shared React Query hooks (incl. useModelsCategories)
         │   ├── navigation.ts  # APP_NAV sidebar entries
         │   ├── demo/          # In-browser fixtures + mock transport (Pages demo build)
-        │   ├── mirror/        # Firestore read-only transport (phone-view build)
         │   ├── theme.tsx      # ThemeProvider — system-theme detection + localStorage persistence
         │   ├── utils.ts       # cn(), formatDate(), formatDateShort(), formatCost()
         │   └── *.test.ts(x)   # api, theme, utils tests
@@ -330,8 +327,6 @@ All API routes are prefixed with `/api`.
 | POST | `/api/sync/run` | Run OpenRouter usage sync |
 | GET | `/api/sync/hermes/status` | Hermes sync status (profiles found, last sync) |
 | POST | `/api/sync/hermes/run` | Run Hermes usage sync (all profiles) |
-| GET | `/api/sync/firebase/status` | Firebase mirror status (configured, enabled, last push) |
-| POST | `/api/sync/firebase/run` | Push the mirror to Firestore now |
 | GET, PUT | `/api/settings` | Get / update settings |
 | GET | `/api/notifications` | List pending notifications |
 | POST | `/api/notifications/test` | Fire a test notification |
@@ -449,7 +444,7 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 123 tests
+### Backend (pytest) — 119 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
 - Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models

@@ -21,7 +21,6 @@ A local-first developer log and dashboard for tracking daily AI-model consumptio
 - **Recommender & compare** — "best tool for this task" (Bayesian-shrunk quality) and side-by-side model comparison
 - **Notifications** — once-daily reminder (OS toast, in-browser overlay, Telegram/Discord webhooks) and an optional daily USD budget warning
 - **Exports** — CSV/JSON with filters, plus a monthly per-model summary endpoint
-- **Optional Firebase mirror** — push a read-only copy to Firestore for a phone view and backup; strictly opt-in ([`firebase/README.md`](firebase/README.md))
 
 ## Screenshots
 
@@ -63,14 +62,13 @@ schema is rebuilt by Alembic and defaults are re-seeded.
 
 Everything is optional; copy [`.env.example`](.env.example) to `.env` to
 override. Notable variables: `COMPANION_DB_PATH`, `COMPANION_TIMEZONE`,
-`COMPANION_HERMES_HOME`, `COMPANION_FIREBASE_CREDENTIALS` +
-`COMPANION_FIREBASE_PROJECT_ID` (mirror only).
+`COMPANION_HERMES_HOME`.
 
 ## Development
 
 ```bash
 # backend (from the repo root)
-backend/.venv/Scripts/python.exe -m pytest backend/tests   # 123 tests
+backend/.venv/Scripts/python.exe -m pytest backend/tests   # 119 tests
 backend/.venv/Scripts/python.exe -m ruff check backend
 
 # frontend (from frontend/)
@@ -79,23 +77,21 @@ npm run lint
 npm run build     # production build (also type-checks)
 
 # alternate builds
-VITE_DATA_SOURCE=demo PAGES_BASE=/comp-AI-on/ npm run build -- --outDir dist-demo
-VITE_DATA_SOURCE=firestore npm run build:mirror
+VITE_DATA_SOURCE=demo PAGES_BASE=/comp-AI-on/ npm run build:demo
 ```
 
-Data sources are chosen at build time (a Vite alias swaps `@/lib/api`): local
-backend by default, in-browser fixtures for the Pages demo, Firestore for the
-read-only mirror. CI ([`ci.yml`](.github/workflows/ci.yml)) runs lint + tests +
-build on every push; [`pages.yml`](.github/workflows/pages.yml) deploys the demo.
+Data sources are chosen at build time (a Vite alias swaps `@/lib/api`): the
+local backend by default, in-browser fixtures for the Pages demo. CI
+([`ci.yml`](.github/workflows/ci.yml)) runs lint + tests + build on every push;
+[`pages.yml`](.github/workflows/pages.yml) deploys the demo.
 
 ## Project layout
 
 ```
 comp[AI]on/
 ├── start.bat / start.ps1     # one-click launchers (venv + deps + both servers)
-├── backend/                  # FastAPI app, syncs (OpenRouter/Hermes/Firebase), Alembic, tests
-├── frontend/                 # Vite + React + Tailwind app, demo & mirror transports
-├── firebase/                 # Firestore rules + mirror setup guide
+├── backend/                  # FastAPI app, usage syncs (OpenRouter/Hermes), Alembic, tests
+├── frontend/                 # Vite + React + Tailwind app, demo transport
 ├── docs/                     # design screenshots and plans
 └── AGENTS.md                 # canonical contributor/agent guide (conventions, commands)
 ```
@@ -110,12 +106,11 @@ comp[AI]on/
 
 ## Security & privacy
 
-- **100% local by default**: no telemetry, no accounts, all data in
+- **100% local**: no telemetry, no accounts, all data in
   `backend/database.db`. The API has no authentication — don't expose the port
   to untrusted networks.
-- The Firebase mirror is opt-in and one-way; credential-looking settings are
-  filtered before anything leaves the machine, and Firestore rules allow reads
-  only for signed-in Google accounts (writes: backend only).
+- Usage syncs read only from this machine: OpenRouter's usage API with your own
+  key, and the Hermes `state.db` files opened read-only.
 
 ## Licence
 

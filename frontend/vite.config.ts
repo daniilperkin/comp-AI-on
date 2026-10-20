@@ -4,15 +4,11 @@ import path from "path";
 import process from "node:process";
 
 // Build-time data-source selection. Instead of a runtime switch (which would
-// bundle every transport plus the firebase SDK), the @/lib/api import is
-// aliased to a variant module — so each build contains exactly one transport.
+// bundle every transport), the @/lib/api import is aliased to a variant module
+// — so each build contains exactly one transport.
 const DATA_SOURCE = process.env.VITE_DATA_SOURCE;
 const apiModule =
-  DATA_SOURCE === "demo"
-    ? "./src/lib/api.demo.ts"
-    : DATA_SOURCE === "firestore"
-      ? "./src/lib/api.mirror.ts"
-      : "./src/lib/api.ts";
+  DATA_SOURCE === "demo" ? "./src/lib/api.demo.ts" : "./src/lib/api.ts";
 
 export default defineConfig({
   // GitHub Pages serves the project under /<repo>/, so the demo build passes

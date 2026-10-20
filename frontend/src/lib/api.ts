@@ -50,14 +50,12 @@ const httpTransport = {
 /**
  * Default (local) api module: talks to the FastAPI server on /api.
  *
- * Build-time variants replace this whole module via the `@/lib/api` alias in
- * vite.config.ts — lib/api.demo.ts for VITE_DATA_SOURCE=demo (GitHub Pages
- * demo) and lib/api.mirror.ts for firestore (read-only phone view). Keeping
- * them as separate modules (not a runtime switch) means a build can never
- * accidentally bundle the firebase SDK or the demo fixtures.
+ * The GitHub Pages demo build replaces this whole module via the `@/lib/api`
+ * alias in vite.config.ts (lib/api.demo.ts, VITE_DATA_SOURCE=demo). Keeping it
+ * a separate module (not a runtime switch) means the production build can
+ * never accidentally bundle the demo fixtures.
  */
 export const IS_DEMO = false;
-export const IS_MIRROR = false;
 
 export const api = {
   get: <T>(path: string) => httpTransport.request<T>("GET", path),

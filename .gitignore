@@ -15,7 +15,6 @@ backend/database.db*
 frontend/node_modules/
 frontend/dist/
 frontend/dist-demo/
-frontend/dist-mirror/
 frontend/.vite/
 frontend/vite.config.js
 frontend/vite.config.d.ts
@@ -36,7 +35,5 @@ Thumbs.db
 .env
 .env.local
 
-# Firebase (service-account keys are credentials — never commit)
-.firebase/
+# Credentials — never commit service-account keys
 *service-account*.json
-firebase-debug.log
