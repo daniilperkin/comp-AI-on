@@ -4,6 +4,23 @@ All notable changes to comp[AI]on are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **react-router-dom 6 → 7** (removes the two moderate advisories; the `future`
+  flags are the default in v7, so `BrowserRouter` lost them).
+- npm `overrides` pin `braces`, `micromatch` and `postcss-selector-parser` to
+  their patched releases inside the Tailwind 3 build chain.
+
+### Removed
+- **Firebase mirror** (backend module, Firestore transport, rules, config and
+  the `firebase-admin` dependency). It was opt-in and never configured; the
+  local SQLite database stays the single source of truth. `npm audit
+  --omit=dev` is now clean.
+
+### Fixed
+- Destructive buttons use pure white text — 4.80:1, AA compliant (was 4.44).
+
 ## [0.5.0] — 2026-10-20
 
 First public release: a local-first developer log for AI-model consumption
@@ -29,8 +46,7 @@ with quality scores, spend tracking and analytics.
   webhooks) and an optional daily USD budget warning.
 - CSV/JSON exports with filters; monthly per-model summary endpoint.
 - **Public demo build** (in-browser fixtures, no backend) deployed to
-  GitHub Pages, plus an **opt-in Firebase mirror** (Firestore push, read-only
-  phone view with Google sign-in).
+  GitHub Pages.
 - Opt-in "telemetry sweep" motion language (Settings → Appearance), fully
   disabled under `prefers-reduced-motion`.
 - Agent tooling: `DESIGN.md` design contract, dev-only Agentation overlay,
