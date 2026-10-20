@@ -22,11 +22,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 
-def _apply_filters(stmt, model_id: int | None, category_id: int | None):
+def _apply_filters(
+    stmt,
+    model_id: int | None,
+    category_id: int | None,
+    unrated: bool = False,
+    origin: str | None = None,
+):
     if model_id is not None:
         stmt = stmt.where(LogEntry.model_id == model_id)
     if category_id is not None:
         stmt = stmt.where(LogEntry.category_id == category_id)
+    if unrated:
+        stmt = stmt.where(LogEntry.quality_score.is_(None))
+    if origin:
+        stmt = stmt.where(LogEntry.origin == origin)
     return stmt
 
 
@@ -61,15 +71,21 @@ def list_logs(
     offset: int = Query(0, ge=0),
     model_id: int | None = None,
     category_id: int | None = None,
+    unrated: bool = Query(False),
+    origin: str | None = None,
     session: Session = Depends(get_session),
 ):
-    count_stmt = _apply_filters(select(func.count(LogEntry.id)), model_id, category_id)
+    count_stmt = _apply_filters(
+        select(func.count(LogEntry.id)), model_id, category_id, unrated, origin
+    )
     total = session.exec(count_stmt).one()
 
     stmt = _apply_filters(
         select(LogEntry).order_by(LogEntry.created_at.desc()),
         model_id,
         category_id,
+        unrated,
+        origin,
     )
     entries = session.exec(stmt.offset(offset).limit(limit)).all()
 

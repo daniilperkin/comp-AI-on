@@ -32,7 +32,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from backend.models import LogEntry, Model
+from backend.models import LogEntry, Model, ModelKind
 from backend.openrouter_sync import _load_model_map, _match_model
 
 logger = logging.getLogger(__name__)
@@ -219,6 +219,33 @@ def _build_notes(profile: str, row: dict[str, Any]) -> str:
     return "\n".join(lines)[:NOTES_MAX]
 
 
+def _ensure_model(
+    session: Session, slug: str, vendor: str | None, model_map: dict[str, Model]
+) -> tuple[Model | None, bool]:
+    """Return the Model for a Hermes slug, creating it on first sight.
+
+    Hermes models are cloud API models consumed agentically, so they are
+    registered as kind=web with the observed billing provider as vendor.
+    Without this every synced row lands in the "Unknown" spend bucket and
+    stays invisible to the leaderboard and the History model filter.
+    """
+    matched = _match_model(slug, model_map)
+    if matched is not None:
+        return matched, False
+    model = Model(
+        name=slug[:200],
+        kind=ModelKind.web,
+        vendor=(vendor or "").strip()[:200] or None,
+        is_active=True,
+    )
+    session.add(model)
+    session.flush()
+    model_map[model.name.lower()] = model
+    if "/" in model.name:
+        model_map.setdefault(model.name.split("/")[-1].lower(), model)
+    return model, True
+
+
 def _entry_fields(
     profile: str, row: dict[str, Any], model_map: dict[str, Model]
 ) -> dict[str, Any] | None:
@@ -251,7 +278,9 @@ def _entry_fields(
     }
     if matched is not None:
         fields["model_id"] = matched.id
-    elif model_slug:
+    if model_slug:
+        # Keep the raw slug alongside the FK: it is the provenance of the row
+        # and the only name available when the model row is later deleted.
         fields["model_name_text"] = model_slug[:200]
     return fields
 
@@ -280,7 +309,10 @@ def run_sync(session: Session, home: Path | None = None) -> dict[str, Any]:
     }
 
     profiles: list[dict[str, Any]] = []
-    totals = {"rows_seen": 0, "created": 0, "updated": 0, "unchanged": 0, "errors": 0}
+    totals = {
+        "rows_seen": 0, "created": 0, "updated": 0, "unchanged": 0, "errors": 0,
+        "models_created": 0,
+    }
 
     for name, db_path in dbs:
         summary: dict[str, Any] = {
@@ -297,6 +329,13 @@ def run_sync(session: Session, home: Path | None = None) -> dict[str, Any]:
 
         summary["rows"] = len(rows)
         for row in rows:
+            slug = str(row.get("model") or "").strip()
+            if slug:
+                _, created_model = _ensure_model(
+                    session, slug, str(row.get("billing_provider") or ""), model_map
+                )
+                if created_model:
+                    totals["models_created"] += 1
             fields = _entry_fields(name, row, model_map)
             if fields is None:
                 totals["errors"] += 1

@@ -7,7 +7,7 @@ import pytest
 from sqlmodel import select
 
 from backend import hermes_sync
-from backend.models import LogEntry, Model, Setting
+from backend.models import LogEntry, Model, ModelKind, Setting
 
 SCHEMA = """
 CREATE TABLE sessions (
@@ -206,15 +206,59 @@ def test_run_sync_matches_local_model(session, tmp_path):
 
     entry = session.exec(select(LogEntry)).one()
     assert entry.model_id is not None
-    assert entry.model_name_text is None
+    assert entry.model_name_text == "deepseek/deepseek-v4.1-flash"
 
 
-def test_run_sync_unmatched_model_falls_back_to_text(session, tmp_path):
+def test_run_sync_auto_creates_model_for_unknown_slug(session, tmp_path):
+    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+
+    result = hermes_sync.run_sync(session, home=tmp_path)
+
+    assert result["models_created"] == 1
+    model = session.exec(
+        select(Model).where(Model.name == "deepseek/deepseek-v4.1-flash")
+    ).one()
+    assert model.kind == ModelKind.web
+    assert model.vendor == "openrouter"
+    entry = session.exec(select(LogEntry)).one()
+    assert entry.model_id == model.id
+
+
+def test_run_sync_auto_create_is_idempotent(session, tmp_path):
     _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
     hermes_sync.run_sync(session, home=tmp_path)
+    second = hermes_sync.run_sync(session, home=tmp_path)
+    assert second["models_created"] == 0
+    assert len(
+        session.exec(
+            select(Model).where(Model.name == "deepseek/deepseek-v4.1-flash")
+        ).all()
+    ) == 1
+
+
+def test_run_sync_backfills_model_id_on_existing_rows(session, tmp_path):
+    # Simulate a row imported before auto-create existed: text-only, no FK.
+    row = {
+        "model": "deepseek/deepseek-v4.1-flash",
+        "billing_provider": "openrouter",
+        "billing_base_url": "https://openrouter.ai/api/v1",
+        "billing_mode": "",
+        "task": "",
+        "session_id": "s1",
+    }
+    session.add(LogEntry(
+        external_id=hermes_sync._external_id("default", row),
+        model_name_text="deepseek/deepseek-v4.1-flash",
+        task_description="auto-imported (hermes)",
+        origin="hermes",
+    ))
+    session.commit()
+
+    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+    hermes_sync.run_sync(session, home=tmp_path)
+
     entry = session.exec(select(LogEntry)).one()
-    assert entry.model_id is None
-    assert entry.model_name_text == "deepseek/deepseek-v4.1-flash"
+    assert entry.model_id is not None
 
 
 def test_run_sync_skips_empty_rows(session, tmp_path):

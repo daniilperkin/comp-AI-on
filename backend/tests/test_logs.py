@@ -49,6 +49,31 @@ def test_list_logs_filter_by_model(client):
     assert data[0]["model_id"] == model_a["id"]
 
 
+def test_list_logs_unrated_filter(client):
+    client.post("/api/logs", json={"task_description": "scored", "quality_score": 8})
+    client.post("/api/logs", json={"task_description": "unscored"})
+
+    resp = client.get("/api/logs?unrated=true")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["task_description"] == "unscored"
+    assert resp.headers["x-total-count"] == "1"
+
+
+def test_list_logs_origin_filter(client, session):
+    from backend.models import LogEntry
+
+    client.post("/api/logs", json={"task_description": "manual one"})
+    session.add(LogEntry(task_description="hermes one", origin="hermes"))
+    session.commit()
+
+    resp = client.get("/api/logs?origin=hermes")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert [d["task_description"] for d in data] == ["hermes one"]
+
+
 def test_get_single_log(client):
     model = client.post("/api/models", json={"name": "SingleModel", "kind": "web"}).json()
     created = client.post("/api/logs", json={"model_id": model["id"], "quality_score": 7}).json()
