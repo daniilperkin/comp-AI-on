@@ -38,7 +38,7 @@
     --accent: 0 0% 17%;
     --accent-foreground: 40 33% 96%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 40 33% 96%;
+    --destructive-foreground: 0 0% 100%;
     --border: 255 255 255 / 0.08;
     --input: 255 255 255 / 0.08;
     --ring: 40 33% 96%;

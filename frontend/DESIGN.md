@@ -14,7 +14,7 @@ colors:
   accent: "#2b2b2b"
   accent-foreground: "#f8f6f1"
   destructive: "#dc2828"
-  destructive-foreground: "#f8f6f1"
+  destructive-foreground: "#ffffff"
   border: "rgba(255, 255, 255, 0.08)"
   ring: "#f8f6f1"
   success: "#34d399"
