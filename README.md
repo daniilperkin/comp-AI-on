@@ -38,16 +38,21 @@ A local-first developer log and dashboard for tracking daily AI-model consumptio
 ## Quick start
 
 Requires Python 3.11+ and Node 20+ on PATH. Either launcher auto-creates the
-virtualenv, installs both dependency sets, and starts the servers:
+virtualenv, installs both dependency sets, starts both servers **without any
+console windows**, and opens the browser:
 
 ```
-start.bat        # or: .\start.ps1
+start.bat        # or start.vbs for a completely silent launch (no flash at all)
 ```
+
+Stop with `stop.bat`. Server output goes to `logs/` (`backend.log`,
+`frontend.log`, `launcher.log`, `setup.log`).
 
 - Frontend: http://localhost:6769 (Vite proxies `/api` to the backend)
 - API: http://localhost:8765/api
 
-Manual setup and per-server commands are in [`AGENTS.md`](AGENTS.md) §4.
+For development with hot reload in a single console: `.\start.ps1 -Windowed`
+(Ctrl+C stops both). Manual per-server commands are in [`AGENTS.md`](AGENTS.md) §4.
 
 ### Resetting the database
 
