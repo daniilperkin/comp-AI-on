@@ -57,6 +57,7 @@ comp[AI]on/
 │   ├── budget.py              # Daily budget check (once-per-day warning)
 │   ├── openrouter_sync.py     # OpenRouter usage sync (fetch, dedupe, map)
 │   ├── hermes_sync.py         # Hermes usage sync (state.db read-only, upsert)
+│   ├── firebase_mirror.py     # One-way Firestore mirror (phone view + backup)
 │   ├── models.py              # All SQLModel tables + create/update schemas
 │   ├── seed.py                # Default seed data (models, categories, settings)
 │   ├── notify.py              # Notification handlers (toast, browser, webhooks)
@@ -70,12 +71,13 @@ comp[AI]on/
 │   │       ├── 0004_model_pricing.py
 │   │       ├── 0005_logentry_external_id.py
 │   │       └── 0006_logentry_hermes_fields.py
-│   ├── tests/                 # pytest test suite (113 tests)
+│   ├── tests/                 # pytest test suite (123 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_budget.py
 │   │   ├── test_categories.py
 │   │   ├── test_costing.py
 │   │   ├── test_export_monthly.py
+│   │   ├── test_firebase_mirror.py
 │   │   ├── test_hermes_sync.py
 │   │   ├── test_logs.py
 │   │   ├── test_models.py
@@ -269,7 +271,7 @@ when running uvicorn directly. The launchers don't set it; they `cd` to the repo
 ### Key design decisions
 - Log entries have **both** FK fields (`model_id`, `category_id`) AND free-text fallbacks (`model_name_text`, `category_name_text`) — allows quick-add without picking from a list
 - All fields on `log_entries` are optional except `id` and `created_at` — validation requires at least one of: model, category, or task_description
-- The Hermes sync reads every Hermes profile's `state.db` read-only (root: `%LOCALAPPDATA%/hermes`, override `COMPANION_HERMES_HOME`) and imports one entry per session × model × task, upserted by `external_id` (`hermes:<profile>:<session>:<pk-hash>`) — live sessions' usage rows keep accumulating, so re-syncs update existing rows instead of skipping them. Runs on startup + every 30 min (APScheduler job `hermes_sync`) and via `POST /api/sync/hermes/run`. Cost is Hermes' stored `estimated_cost_usd` (OpenRouter headline pricing — overstates post-2026-10-07 pinned deepseek-v4.1-flash rows ~2.2x; opus/glm stored estimates verified accurate; deliberate choice, recalibrate via measured rates if it matters). Daily views overcount multi-day sessions (rows are cumulative) — accepted limitation.
+- The Hermes sync reads every Hermes profile's `state.db` read-only (root: `%LOCALAPPDATA%/hermes`, override `COMPANION_HERMES_HOME`) and imports one entry per session × model × task, upserted by `external_id` (`hermes:<profile>:<session>:<pk-hash>`) — live sessions' usage rows keep accumulating, so re-syncs update existing rows instead of skipping them. Runs on startup + every 30 min (APScheduler job `hermes_sync`) and via `POST /api/sync/hermes/run`. Cost is Hermes' stored `estimated_cost_usd` (OpenRouter headline pricing — overstates post-2026-10-07 pinned deepseek-v4.1-flash rows ~2.2x; opus/glm stored estimates verified accurate; deliberate choice, recalibrate via measured rates if it matters). Daily views overcount multi-day sessions (rows are cumulative) — accepted limitation. Slugs without a matching Model row are auto-registered on sync (`kind=web`, vendor = billing provider), so spend, leaderboard and the History model filter attribute fleet usage instead of lumping it into "Unknown"; existing rows are backfilled on the next sync. `success_rate` (overview + leaderboard) divides by entries that actually carry an outcome — Hermes rows have none, and counting them would dilute the rate to 0.
 - **Migrations (Alembic)** manage the schema. On startup `init_db()` runs `alembic upgrade head`. Pre-existing pre-Alembic databases are auto-adopted: stamped to the baseline revision then upgraded. Fresh databases run all migrations from empty.
 - `PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`, `PRAGMA synchronous=NORMAL` are applied per connection (see `backend/db.py`'s SQLAlchemy `connect` event listener) — WAL sidecars (`database.db-wal`, `database.db-shm`) are gitignored.
 - Settings are key-value strings (e.g., `reminder_time` = `"18:00"`, `seed_version` = `"3"`). Settings updates are validated against a typed `SettingsUpdate` schema (`extra="forbid"` allowlist) in `routers/settings.py`.
@@ -319,6 +321,8 @@ All API routes are prefixed with `/api`.
 | POST | `/api/sync/run` | Run OpenRouter usage sync |
 | GET | `/api/sync/hermes/status` | Hermes sync status (profiles found, last sync) |
 | POST | `/api/sync/hermes/run` | Run Hermes usage sync (all profiles) |
+| GET | `/api/sync/firebase/status` | Firebase mirror status (configured, enabled, last push) |
+| POST | `/api/sync/firebase/run` | Push the mirror to Firestore now |
 | GET, PUT | `/api/settings` | Get / update settings |
 | GET | `/api/notifications` | List pending notifications |
 | POST | `/api/notifications/test` | Fire a test notification |
@@ -341,7 +345,7 @@ All API routes are prefixed with `/api`.
 Future flags enabled: `v7_startTransition`, `v7_relativeSplatPath`.
 
 ### Layout
-Sidebar nav (`APP_NAV` in `src/lib/navigation.ts`: Dashboard, New Log, History, Analytics, Recommender, Compare, Models, Settings) + main content area.
+Sidebar nav (`APP_NAV` in `src/lib/navigation.ts`: Dashboard, New Log, History, Rate, Analytics, Recommender, Compare, Models, Settings) + main content area.
 Theme applied via `class="dark"` on `<html>` (see `src/lib/theme.tsx`).
 
 ### API client
@@ -436,12 +440,12 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 113 tests
+### Backend (pytest) — 123 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
 - Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models
 
-### Frontend (vitest) — 23 tests
+### Frontend (vitest) — 29 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
 - Run: `npm run test` in `frontend/`
 - Covers: `lib/api.ts`, `lib/utils.ts`, `lib/theme.tsx`, `CommandPalette`, `QuickAddBar`
