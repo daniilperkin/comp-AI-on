@@ -76,8 +76,8 @@ export default function Dashboard() {
                 value={formatCost(stats?.total_cost_30d ?? null)}
                 hint={
                   stats?.total_cost_all_time
-                    ? `all time ${formatCost(stats.total_cost_all_time)}`
-                    : undefined
+                    ? `estimated · all time ${formatCost(stats.total_cost_all_time)}`
+                    : "estimated"
                 }
               />
             </div>

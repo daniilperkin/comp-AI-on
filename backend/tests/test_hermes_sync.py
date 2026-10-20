@@ -88,7 +88,7 @@ def _session(sid="s1", source="desktop", title="Fix the bug", cwd="C:/repo", bra
 
 
 def _usage(
-    sid="s1", model="deepseek/deepseek-v4.1-flash", provider="openrouter",
+    sid="s1", model="test/model-basic", provider="openrouter",
     task="", inp=100, out=20, cr=5000, cw=30, rt=10,
     est=0.0123, act=0.0, status="estimated", first_seen=1000.0, last_seen=1500.0,
 ):
@@ -150,6 +150,22 @@ def test_run_sync_prefers_actual_cost(session, tmp_path):
     assert "cost:" not in entry.notes
 
 
+def test_measured_rate_overrides_stored_estimate(session, tmp_path):
+    """A measured rate wins over Hermes' catalog-based estimate."""
+    _make_profile(
+        tmp_path,
+        "default",
+        sessions=[_session()],
+        usage=[_usage(model="deepseek/deepseek-v4.1-flash", est=0.0123)],
+    )
+    hermes_sync.run_sync(session, home=tmp_path)
+    entry = session.exec(select(LogEntry)).one()
+    # 100 in * $0.10/M + 20 out * $0.60/M + 5000 cache-read * $0.003/M
+    expected = (100 * 0.10 + 20 * 0.60 + 5000 * 0.003) / 1_000_000
+    assert entry.cost_usd == pytest.approx(expected, rel=1e-6)
+    assert entry.cost_usd < 0.0123
+
+
 def test_run_sync_upserts_mutated_rows(session, tmp_path):
     db = _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
     first = hermes_sync.run_sync(session, home=tmp_path)
@@ -203,7 +219,12 @@ def test_run_sync_tolerates_unreadable_profile(session, tmp_path):
 def test_run_sync_matches_local_model(session, tmp_path):
     session.add(Model(name="deepseek-v4.1-flash", kind="web", vendor="DeepSeek"))
     session.commit()
-    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+    _make_profile(
+        tmp_path,
+        "default",
+        sessions=[_session()],
+        usage=[_usage(model="deepseek/deepseek-v4.1-flash")],
+    )
 
     hermes_sync.run_sync(session, home=tmp_path)
 
@@ -213,7 +234,12 @@ def test_run_sync_matches_local_model(session, tmp_path):
 
 
 def test_run_sync_auto_creates_model_for_unknown_slug(session, tmp_path):
-    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+    _make_profile(
+        tmp_path,
+        "default",
+        sessions=[_session()],
+        usage=[_usage(model="deepseek/deepseek-v4.1-flash")],
+    )
 
     result = hermes_sync.run_sync(session, home=tmp_path)
 
@@ -228,7 +254,12 @@ def test_run_sync_auto_creates_model_for_unknown_slug(session, tmp_path):
 
 
 def test_run_sync_auto_create_is_idempotent(session, tmp_path):
-    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+    _make_profile(
+        tmp_path,
+        "default",
+        sessions=[_session()],
+        usage=[_usage(model="deepseek/deepseek-v4.1-flash")],
+    )
     hermes_sync.run_sync(session, home=tmp_path)
     second = hermes_sync.run_sync(session, home=tmp_path)
     assert second["models_created"] == 0
@@ -257,7 +288,12 @@ def test_run_sync_backfills_model_id_on_existing_rows(session, tmp_path):
     ))
     session.commit()
 
-    _make_profile(tmp_path, "default", sessions=[_session()], usage=[_usage()])
+    _make_profile(
+        tmp_path,
+        "default",
+        sessions=[_session()],
+        usage=[_usage(model="deepseek/deepseek-v4.1-flash")],
+    )
     hermes_sync.run_sync(session, home=tmp_path)
 
     entry = session.exec(select(LogEntry)).one()

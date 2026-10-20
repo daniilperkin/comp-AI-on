@@ -17,8 +17,9 @@ Design:
 Mapping notes:
 - Hermes' input_tokens is uncached input only; total input is
   input + cache_read + cache_write, each stored in its own column here.
-- Cost prefers actual_cost_usd when the provider reported real billing, else
-  estimated_cost_usd (Hermes prices via its provider-models catalog).
+- Cost prefers a measured per-model rate (backend/pricing.py) when one exists
+  for the model, then actual_cost_usd when the provider reported real billing,
+  else estimated_cost_usd (Hermes prices via its provider-models catalog).
 - quality_score/outcome/latency_ms stay NULL — Hermes records none of them.
 """
 import hashlib
@@ -34,6 +35,7 @@ from sqlmodel import Session, select
 
 from backend.models import LogEntry, Model, ModelKind
 from backend.openrouter_sync import _load_model_map, _match_model
+from backend.pricing import measured_cost
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +189,17 @@ def _task_marker(task: str) -> str:
     return f"auto-imported (hermes:{task})" if task else "auto-imported (hermes)"
 
 
-def _row_cost(row: dict[str, Any]) -> float:
+def _row_cost(row: dict[str, Any], slug: str | None = None) -> float:
+    """Cost for one usage row: measured rates win, stored estimate is the fallback."""
+    measured = measured_cost(
+        slug,
+        input_tokens=_to_int(row.get("input_tokens")),
+        output_tokens=_to_int(row.get("output_tokens")),
+        cache_read_tokens=_to_int(row.get("cache_read_tokens")),
+        cache_write_tokens=_to_int(row.get("cache_write_tokens")),
+    )
+    if measured is not None:
+        return measured
     actual = _to_float(row.get("actual_cost_usd")) or 0.0
     estimated = _to_float(row.get("estimated_cost_usd")) or 0.0
     return actual if actual > 0 else estimated
@@ -256,7 +268,7 @@ def _entry_fields(
     cache_read = _to_int(row.get("cache_read_tokens"))
     cache_write = _to_int(row.get("cache_write_tokens"))
     reasoning = _to_int(row.get("reasoning_tokens"))
-    cost = _row_cost(row)
+    cost = _row_cost(row, model_slug)
     if matched is None and not model_slug and not any(
         (in_tok, out_tok, cache_read, cache_write, reasoning, cost)
     ):
