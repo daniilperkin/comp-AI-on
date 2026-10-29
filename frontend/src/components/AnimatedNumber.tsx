@@ -1,5 +1,6 @@
 import NumberFlow from "@number-flow/react";
 import type { Format } from "@number-flow/react";
+import { LOCALE } from "@/lib/utils";
 
 /**
  * Animated figure for metrics that change while you watch — a new entry lands,
@@ -39,6 +40,7 @@ export function AnimatedNumber({
     <NumberFlow
       value={value}
       format={format}
+      locales={LOCALE}
       className={className}
       animated={!reduce}
       style={{ fontVariantNumeric: "tabular-nums" }}
