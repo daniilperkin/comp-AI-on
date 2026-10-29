@@ -4,10 +4,43 @@ All notable changes to comp[AI]on are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.1] — 2026-10-20
+
+Everything from the desktop UI/UX audit (17 items), plus the Firebase removal
+and dependency cleanup that clears the production advisory set.
+
+### Added
+- **History filters**: free-text search over task/session/model/notes, a date
+  range, an "unrated only" toggle and a per-page selector — all kept in the
+  URL and inherited by the CSV/JSON exports. `GET /api/logs` gained `q`,
+  `date_from` and `date_to`; both export endpoints accept them too.
+- **Models table**: name, vendor, kind, status, entries, average score and
+  actions, with search. 44 models now fit in ~2,550 px instead of ~3,896 px.
+- **Compare search**: filter-as-you-type, selected chips pinned to the top,
+  `aria-pressed` on every chip and a "Clear selection" action.
+- **Measured pricing** (`backend/pricing.py`): per-model token rates that
+  override Hermes' stored estimate where a rate is known (deepseek-v4.1-flash
+  family: $0.10 in / $0.60 out / $0.003 cache-read per M). All-time spend
+  $547.40 → $496.22; the Dashboard labels the figure "measured + estimated".
+- **Accessibility**: every form control has an id + label, icon-only buttons
+  carry accessible names ("Edit <model>", "Delete <model>"), `CardTitle`
+  renders `h2` (no more h1→h3 skips), the analytics matrix scroller is
+  keyboard-focusable, and `src/a11y.test.tsx` runs axe-core over the Log form
+  and the Models list.
+- `ConfirmDialog` (Radix `alertdialog`) and `Switch` primitives.
 
 ### Changed
-- **react-router-dom 6 → 7** (removes the two moderate advisories; the `future`
+- All app-level number and date formatting is pinned to en-US, so a German
+  Windows locale no longer renders "1.468" or "20. Okt." inside the English UI.
+- The quick log is a real form: Enter saves, Escape clears, and validation
+  errors that only the description can satisfy expand the bar and focus it.
+- The full Log form confirms saves with the same toast + Undo as the quick bar.
+- Settings uses one switch idiom (motion, channels, reminder) and the Save
+  button sits under the budget with a note on what it persists.
+- Dashboard stat row is five columns at `xl`; the analytics matrix spans both
+  columns; the leaderboard truncates model ids in the middle; the Recommender
+  requests eight picks and explains its ranking beside them.
+- react-router-dom 6 → 7 (removes the two moderate advisories; the `future`
   flags are the default in v7, so `BrowserRouter` lost them).
 - npm `overrides` pin `braces`, `micromatch` and `postcss-selector-parser` to
   their patched releases inside the Tailwind 3 build chain.
@@ -19,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   --omit=dev` is now clean.
 
 ### Fixed
+- Rate page: the last score button reads "10 (0)", token counts use the shared
+  formatter, and the duplicated cost is gone — the Hermes sync no longer writes
+  "cost: …" into notes, where it repeated the badge.
+- Copy: "no outcomes yet" instead of "no solved", "All categories (global
+  ranking)" instead of "(global)".
 - Destructive buttons use pure white text — 4.80:1, AA compliant (was 4.44).
 
 ## [0.5.0] — 2026-10-20
