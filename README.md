@@ -14,9 +14,10 @@ A local-first developer log and dashboard for tracking daily AI-model consumptio
 
 - **Quality-focused logging** — score every AI interaction 1–10 with outcome, category, tokens and latency; quick-add from the dashboard, full form, edit/delete
 - **Analytics** — daily timeline (7/30/90-day ranges), model leaderboard, quality × category matrix
-- **Spend tracking** — per-model $/MTok prices derive costs automatically; explicit costs win; 30-day and all-time totals, per-day and per-model breakdowns
+- **Spend tracking** — per-model $/MTok prices derive costs automatically; explicit costs win; measured rates (`backend/pricing.py`) override Hermes' catalog estimate where one is known; 30-day and all-time totals, per-day and per-model breakdowns
 - **OpenRouter usage sync** — pull real API activity in, deduped across re-syncs
 - **Hermes usage sync** — import every local Hermes Agent profile's usage from its `state.db` (read-only); unknown model slugs are auto-registered so spend and the leaderboard attribute them
+- **Search & filters** — free-text search over task/session/model/notes, date range and an unrated-only toggle, kept in the URL and applied to the exports
 - **Rate queue** (`/rate`) — keyboard-driven scoring of imported entries (1–9, 0 = 10, S to skip)
 - **Recommender & compare** — "best tool for this task" (Bayesian-shrunk quality) and side-by-side model comparison
 - **Notifications** — once-daily reminder (OS toast, in-browser overlay, Telegram/Discord webhooks) and an optional daily USD budget warning
@@ -68,11 +69,11 @@ override. Notable variables: `COMPANION_DB_PATH`, `COMPANION_TIMEZONE`,
 
 ```bash
 # backend (from the repo root)
-backend/.venv/Scripts/python.exe -m pytest backend/tests   # 119 tests
+backend/.venv/Scripts/python.exe -m pytest backend/tests   # 123 tests
 backend/.venv/Scripts/python.exe -m ruff check backend
 
 # frontend (from frontend/)
-npm test          # 29 tests
+npm test          # 35 tests
 npm run lint
 npm run build     # production build (also type-checks)
 
@@ -100,8 +101,10 @@ comp[AI]on/
 
 - Synced Hermes usage rows are cumulative per session, so per-day views can
   overcount multi-day sessions.
-- Hermes cost figures use Hermes' stored provider-catalog estimates, not a
-  reconciled bill.
+- Spend is a mixed basis: measured token rates where one has been verified
+  against a provider invoice (`backend/pricing.py`, currently the
+  deepseek-v4.1-flash family), Hermes' provider-catalog estimate everywhere
+  else. It is not a reconciled bill — the Dashboard labels it as such.
 - Quality is manual by design — no model grades itself into your leaderboard.
 
 ## Security & privacy

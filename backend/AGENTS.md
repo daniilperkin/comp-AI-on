@@ -22,6 +22,10 @@ backend/
 ├── db.py              # SQLAlchemy engine, get_session() dependency, init_db()
 ├── config.py          # Configuration and settings
 ├── models.py          # ALL SQLModel tables + Base/Create/Update schemas
+├── costing.py         # Cost derivation (explicit > token-derived > unknown)
+├── pricing.py         # Measured per-model token rates (override the estimate)
+├── budget.py          # Daily budget check (once-per-day warning)
+├── openrouter_sync.py # OpenRouter usage sync (fetch, dedupe, map)
 ├── notify.py          # Notification handlers
 ├── scheduler.py       # APScheduler configuration
 ├── seed.py            # Default seed data (models, categories, settings)
@@ -128,6 +132,20 @@ rows = session.exec(
     .group_by(LogEntry.model_id)
 ).all()
 ```
+
+## Cost Basis
+
+Three sources, in order of authority:
+
+1. **Measured rates** — `pricing.py`'s `MEASURED_RATES[slug]` recomputed from the
+   token buckets. Only add a rate that was verified against a provider invoice
+   or usage API; record the provenance in a comment.
+2. **`actual_cost_usd`** — present when the provider reported real billing.
+3. **`estimated_cost_usd`** — Hermes' catalog headline pricing. Correct for most
+   models, but it overstates pinned cheap routes.
+
+`hermes_sync._row_cost()` implements that order. The Dashboard labels the total
+"measured + estimated" because it mixes all three. Never present it as a bill.
 
 ## Database Reset
 

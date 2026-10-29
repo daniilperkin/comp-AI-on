@@ -204,6 +204,12 @@ controls and badges (`rounded-md`), 6px small elements (`rounded-sm`).
   their 15%-alpha tint with the matching text color.
 - **Inputs** (`input.tsx`): `h-9 rounded-md border-input bg-background
   px-3 text-sm`, focus `ring-1 ring-ring`, placeholder `muted-foreground`.
+- **Switch** (`switch.tsx`): the only toggle idiom — Radix switch, `h-5 w-9`
+  track, `bg-primary` when on. Use it for settings booleans instead of a
+  custom button.
+- **ConfirmDialog** (`confirm-dialog.tsx`): Radix `alertdialog` for
+  destructive confirmation (delete a model or a log entry). Never call the
+  native `confirm()` — it is unstyled, blocking and invisible to the theme.
 
 ## Do's and Don'ts
 

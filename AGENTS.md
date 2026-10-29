@@ -72,7 +72,7 @@ comp[AI]on/
 │   │       ├── 0004_model_pricing.py
 │   │       ├── 0005_logentry_external_id.py
 │   │       └── 0006_logentry_hermes_fields.py
-│   ├── tests/                 # pytest test suite (119 tests)
+│   ├── tests/                 # pytest test suite (123 tests)
 │   │   ├── conftest.py         # Fixtures (in-memory SQLite, test client)
 │   │   ├── test_budget.py
 │   │   ├── test_categories.py
@@ -445,15 +445,15 @@ In production, FastAPI serves the built frontend from `frontend/dist/` as static
 
 The project has a test suite on both sides, enforced as a CI gate (`.github/workflows/ci.yml` runs lint + tests + build on every push/PR to `main`).
 
-### Backend (pytest) — 119 tests
+### Backend (pytest) — 123 tests
 - Location: `backend/tests/` (uses an in-memory SQLite fixture + FastAPI `TestClient`)
 - Run: `python -m pytest backend/tests -v --tb=short` (from repo root, with `PYTHONPATH` set)
-- Covers: logs CRUD, stats aggregation (incl. spend + monthly), cost derivation, daily budget, OpenRouter sync (mocked HTTP), export filters, settings, scheduler, recommender, categories, models
+- Covers: logs CRUD (incl. `q` / date-range search), stats aggregation (incl. spend + monthly), cost derivation + measured pricing, daily budget, OpenRouter sync (mocked HTTP), Hermes sync (measured vs actual vs estimated cost), export filters, settings, scheduler, recommender, categories, models
 
-### Frontend (vitest) — 29 tests
+### Frontend (vitest) — 35 tests
 - Location: `frontend/src/**/*.test.{ts,tsx}` (jsdom environment, setup in `src/test-setup.ts`)
 - Run: `npm run test` in `frontend/`
-- Covers: `lib/api.ts`, `lib/utils.ts`, `lib/theme.tsx`, `CommandPalette`, `QuickAddBar`
+- Covers: `lib/api.ts`, `lib/utils.ts` (en-US formatting + shortcut label), `lib/theme.tsx`, `CommandPalette`, `QuickAddBar`, and `a11y.test.tsx` (axe-core over the Log form and Models list; color-contrast disabled in jsdom)
 
 ### CI gate
 `.github/workflows/ci.yml` runs two jobs:

@@ -30,18 +30,22 @@ frontend/
 ├── public/
 │   └── favicon.svg
 └── src/
-    ├── main.tsx             # React entry + BrowserRouter (future flags on)
+    ├── main.tsx             # React entry + BrowserRouter
     ├── App.tsx              # Router + sidebar layout + nav
-    ├── index.css            # Tailwind directives + CSS vars (dark theme)
+    ├── index.css            # Tailwind directives + CSS vars (light + dark)
     ├── types.ts             # TS interfaces mirroring backend models
     ├── vite-env.d.ts
-    ├── test-setup.ts        # Vitest setup (jsdom, matchers)
+    ├── test-setup.ts        # Vitest setup (jsdom, matchers, ResizeObserver stub)
+    ├── a11y.test.tsx        # axe-core regression guard (Log form, Models list)
     ├── lib/
     │   ├── api.ts           # Fetch wrapper (get/post/patch/put/delete)
+    │   ├── api.demo.ts      # Demo transport (Pages build only)
     │   ├── queries.ts       # Shared React Query hooks
     │   ├── navigation.ts    # APP_NAV sidebar entries
+    │   ├── motion.tsx       # MotionProvider — opt-in animations
     │   ├── theme.tsx        # ThemeProvider — system detection + persistence
-    │   └── utils.ts         # cn(), formatDate(), formatDateShort(), formatCost()
+    │   ├── demo/            # In-browser fixtures + mock transport
+    │   └── utils.ts         # cn(), formatCost/Date/Number/Int(), shortcutLabel()
     ├── components/
     │   ├── ui/              # shadcn-style primitives
     │   │   ├── button.tsx
@@ -49,14 +53,20 @@ frontend/
     │   │   ├── label.tsx
     │   │   ├── textarea.tsx
     │   │   ├── select.tsx
-    │   │   ├── card.tsx
+    │   │   ├── card.tsx      # CardTitle renders h2
     │   │   ├── badge.tsx
     │   │   ├── command.tsx
     │   │   ├── dialog.tsx
+    │   │   ├── confirm-dialog.tsx  # Radix alertdialog — replaces confirm()
+    │   │   ├── switch.tsx    # The one toggle idiom
     │   │   ├── skeleton.tsx
     │   │   └── table.tsx
     │   ├── StatCard.tsx
-    │   ├── QuickAddBar.tsx   # Quick-add form (consumes useModelsCategories)
+    │   ├── QuickAddBar.tsx   # Quick-add <form> (Enter saves, Escape clears)
+    │   ├── QuickCapture.tsx  # Global capture dialog
+    │   ├── CommandPalette.tsx
+    │   ├── NotificationOverlay.tsx
+    │   ├── ActivityHeatmap.tsx
     │   ├── LogForm.tsx       # Full create/edit form
     │   └── LogTable.tsx      # Reusable log entry table
     └── pages/
@@ -67,9 +77,22 @@ frontend/
         ├── Log.tsx
         ├── Models.tsx
         ├── NotFound.tsx
+        ├── Rate.tsx
         ├── Recommender.tsx
         └── Settings.tsx
 ```
+
+## Tests
+
+`npm test` runs Vitest in jsdom (35 tests): `lib/api.ts`, `lib/utils.ts`
+(en-US formatting, shortcut label), `lib/theme.tsx`, `CommandPalette`,
+`QuickAddBar`, and `a11y.test.tsx`, which runs axe-core over the Log form and
+the Models list. Color-contrast is disabled there (jsdom cannot compute it) —
+check contrast in a real browser instead.
+
+jsdom needs `ResizeObserver`, `scrollIntoView` and `setPointerCapture` stubs;
+they live in `src/test-setup.ts`. Without them Radix toasts raise an unhandled
+error that fails CI.
 
 ## Path Alias
 
